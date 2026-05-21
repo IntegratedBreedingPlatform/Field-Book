@@ -193,7 +193,11 @@ fun OnboardingScreen(
 
             PagerFooter(
                 currentPage = pagerState.currentPage,
-                canContinue = pagerState.currentPage != 2 || hasRequiredSetup,
+                canContinue = when (pagerState.currentPage) {
+                    2 -> hasRequiredSetup
+                    3 -> !importInProgress
+                    else -> true
+                },
                 onBack = {
                     coroutineScope.launch {
                         pagerState.animateScrollToPage((pagerState.currentPage - 1).coerceAtLeast(0))
@@ -527,7 +531,7 @@ private fun PagerFooter(
             }
             Button(
                 onClick = onNext,
-                enabled = canContinue || currentPage == 3
+                enabled = canContinue
             ) {
                 Text(if (currentPage == 3) "Done" else "Next")
             }
