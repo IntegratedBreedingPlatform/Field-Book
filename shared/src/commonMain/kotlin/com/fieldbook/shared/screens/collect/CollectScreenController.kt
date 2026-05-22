@@ -68,6 +68,8 @@ class CollectScreenController {
     private var restoredTraitSelection = false
     var inputValidationMessage by mutableStateOf<String?>(null)
         private set
+    var collectInteractionLocked by mutableStateOf(false)
+        private set
     private val suppressedDefaultEntries = mutableSetOf<String>()
 
     val primaryId = settings.getString(GeneralKeys.PRIMARY_NAME.key, "")
@@ -299,6 +301,10 @@ class CollectScreenController {
 
     fun showInputValidationMessage(message: String) {
         inputValidationMessage = message
+    }
+
+    fun setCollectInteractionLocked(locked: Boolean) {
+        collectInteractionLocked = locked
     }
 
     fun clearCurrentTraitValue() {

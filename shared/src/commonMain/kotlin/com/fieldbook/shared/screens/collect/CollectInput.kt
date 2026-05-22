@@ -31,6 +31,7 @@ import com.fieldbook.shared.screens.collect.traits.DateTrait
 import com.fieldbook.shared.screens.collect.traits.DiseaseRatingTrait
 import com.fieldbook.shared.screens.collect.traits.NumericTrait
 import com.fieldbook.shared.screens.collect.traits.AngleTrait
+import com.fieldbook.shared.screens.collect.traits.AudioTrait
 import com.fieldbook.shared.screens.collect.traits.LocationTrait
 import com.fieldbook.shared.screens.collect.traits.PercentTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
@@ -182,6 +183,26 @@ fun CollectInput(
                     )
                 }
             }
+        } else if (formatEnum == Formats.AUDIO) {
+            TraitInputContainer(
+                usesLazyVerticalInput = false,
+                scrollable = false,
+                centerContent = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                key(currentPlotId, currentTraitId) {
+                    TraitInputHost(
+                        controller = controller,
+                        trait = trait,
+                        values = values,
+                        onEdited = { isEdited = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        onExpandPhotoTrait = onExpandPhotoTrait
+                    )
+                }
+            }
         } else {
             Text(
                 text = displayValue,
@@ -223,6 +244,7 @@ fun CollectInput(
 private fun TraitInputContainer(
     usesLazyVerticalInput: Boolean,
     scrollable: Boolean = true,
+    centerContent: Boolean = !scrollable,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -234,11 +256,11 @@ private fun TraitInputContainer(
                 Modifier.verticalScroll(rememberScrollState())
             }
         ),
-        contentAlignment = if (scrollable) Alignment.TopCenter else Alignment.Center
+        contentAlignment = if (centerContent) Alignment.Center else Alignment.TopCenter
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (scrollable) Arrangement.Top else Arrangement.Center,
+            verticalArrangement = if (centerContent) Arrangement.Center else Arrangement.Top,
             modifier = if (usesLazyVerticalInput || !scrollable) {
                 Modifier.fillMaxSize()
             } else {
@@ -336,6 +358,16 @@ fun TraitInputHost(
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
+        Formats.AUDIO -> AudioTrait(
+            value = value,
+            onValueChange = {
+                controller.updateCurrentTraitValue(it)
+                onEdited()
+            },
+            controller = controller,
+            modifier = modifier.fillMaxWidth().padding(8.dp)
+        )
+
         Formats.DATE -> DateTrait(
             value = value,
             onValueChange = {
@@ -400,7 +432,17 @@ fun TraitInputHost(
                 traitFormat = trait.format!!,
             )
 
-            "audio", "usb_camera", "gopro", "canon" -> NotImplementedTrait(
+            "audio" -> AudioTrait(
+                value = value,
+                onValueChange = {
+                    controller.updateCurrentTraitValue(it)
+                    onEdited()
+                },
+                controller = controller,
+                modifier = modifier.fillMaxWidth().padding(8.dp)
+            )
+
+            "usb_camera", "gopro", "canon" -> NotImplementedTrait(
                 traitFormat = trait.format!!,
             )
 
