@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,9 +28,13 @@ import com.fieldbook.shared.screens.collect.traits.BooleanTrait
 import com.fieldbook.shared.screens.collect.traits.CategoricalTrait
 import com.fieldbook.shared.screens.collect.traits.CounterTrait
 import com.fieldbook.shared.screens.collect.traits.DateTrait
+import com.fieldbook.shared.screens.collect.traits.DiseaseRatingTrait
 import com.fieldbook.shared.screens.collect.traits.NumericTrait
+import com.fieldbook.shared.screens.collect.traits.AngleTrait
+import com.fieldbook.shared.screens.collect.traits.LocationTrait
 import com.fieldbook.shared.screens.collect.traits.PercentTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
+import com.fieldbook.shared.screens.collect.traits.TextTrait
 import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.theme.AppColors
 import com.fieldbook.shared.traits.Formats
@@ -110,6 +113,28 @@ fun CollectInput(
             }
         }
 
+        Formats.NUMERIC -> {
+            val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
+            if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
+        }
+        Formats.PERCENT -> {
+            val raw = if (value.isEmpty()) trait?.defaultValue.orEmpty() else value
+            when {
+                raw.isBlank() -> ""
+                raw == "NA" -> "NA"
+                raw.endsWith("%") -> raw
+                else -> "$raw%"
+            }
+        }
+        Formats.BOOLEAN -> {
+            val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
+            val raw = if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
+            when {
+                raw.equals("true", ignoreCase = true) -> "TRUE"
+                raw.equals("false", ignoreCase = true) -> "FALSE"
+                else -> ""
+            }
+        }
         else -> value
     }
 
@@ -117,6 +142,10 @@ fun CollectInput(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.fillMaxWidth(),
     ) {
+        androidx.compose.runtime.LaunchedEffect(currentPlotId, currentTraitId) {
+            controller.ensureCurrentTraitDefaultValueApplied()
+        }
+
         Spacer(Modifier.height(16.dp))
 
         if (formatEnum == Formats.TEXT) {
@@ -128,9 +157,10 @@ fun CollectInput(
                         isEdited = true
                     },
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    fontWeight = fontWeight,
-                    fontStyle = fontStyle,
+                    isEdited = isEdited,
                     color = fontColor,
+                    defaultValue = trait?.defaultValue,
+                    closeKeyboardOnOpen = trait?.closeKeyboardOnOpen == true,
                 )
             }
         } else if (formatEnum?.isCamera == true) {
@@ -237,6 +267,8 @@ fun TraitInputHost(
     when (formatEnum) {
         Formats.NUMERIC -> NumericTrait(
             value = value,
+            defaultValue = trait?.defaultValue,
+            useDefaultValue = trait?.id?.let(controller::shouldUseDefaultValue) == true,
             onValueChange = {
                 controller.updateCurrentTraitValue(it)
                 onEdited()
@@ -274,6 +306,8 @@ fun TraitInputHost(
 
         Formats.BOOLEAN -> BooleanTrait(
             value = value,
+            defaultValue = trait?.defaultValue,
+            useDefaultValue = trait?.id?.let(controller::shouldUseDefaultValue) == true,
             onValueChange = {
                 controller.updateCurrentTraitValue(it)
                 onEdited()
@@ -292,6 +326,9 @@ fun TraitInputHost(
 
         Formats.PERCENT -> PercentTrait(
             value = value,
+            minimum = trait?.minimum,
+            maximum = trait?.maximum,
+            defaultValue = trait?.defaultValue,
             onValueChange = {
                 controller.updateCurrentTraitValue(it)
                 onEdited()
@@ -305,6 +342,16 @@ fun TraitInputHost(
                 controller.updateCurrentTraitValue(it)
                 onEdited()
             },
+            modifier = modifier.fillMaxWidth().padding(8.dp)
+        )
+
+        Formats.DISEASE_RATING -> DiseaseRatingTrait(
+            value = value,
+            onValueChange = {
+                controller.updateCurrentTraitValue(it)
+                onEdited()
+            },
+            onValidationError = controller::showInputValidationMessage,
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
@@ -335,8 +382,14 @@ fun TraitInputHost(
                 traitFormat = trait.format!!,
             )
 
-            "disease", "disease_rating" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
+            "disease", "disease_rating", "disease rating", "rust rating" -> DiseaseRatingTrait(
+                value = value,
+                onValueChange = {
+                    controller.updateCurrentTraitValue(it)
+                    onEdited()
+                },
+                onValidationError = controller::showInputValidationMessage,
+                modifier = modifier.fillMaxWidth().padding(8.dp)
             )
 
             "gnss", "gps" -> NotImplementedTrait(
@@ -359,9 +412,10 @@ fun TraitInputHost(
                         onEdited()
                     },
                     modifier = modifier.fillMaxWidth().padding(8.dp),
-                    fontWeight = FontWeight.Bold,
-                    fontStyle = FontStyle.Italic,
+                    isEdited = true,
                     color = AppColors.fb_color_text_dark.color,
+                    defaultValue = trait?.defaultValue,
+                    closeKeyboardOnOpen = trait?.closeKeyboardOnOpen == true,
                 )
             }
         }
@@ -373,29 +427,19 @@ fun EditableValueText(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    fontWeight: FontWeight = FontWeight.Bold,
-    fontStyle: FontStyle = FontStyle.Italic,
-    color: androidx.compose.ui.graphics.Color,
+    isEdited: Boolean = false,
+    color: androidx.compose.ui.graphics.Color = AppColors.fb_color_text_dark.color,
+    defaultValue: String? = null,
+    closeKeyboardOnOpen: Boolean = false,
 ) {
-    var text by remember(value) { mutableStateOf(value) }
-    BasicTextField(
-        value = text,
-        onValueChange = {
-            text = it
-            onValueChange(it)
-        },
+    TextTrait(
+        value = value,
+        onValueChange = onValueChange,
         modifier = modifier,
-        textStyle = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(
-            fontWeight = fontWeight,
-            fontStyle = fontStyle,
-            color = color,
-            textAlign = TextAlign.Center,
-        ),
-        decorationBox = { innerTextField ->
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                innerTextField()
-            }
-        }
+        defaultValue = defaultValue,
+        isEdited = isEdited,
+        editedColor = color,
+        closeKeyboardOnOpen = closeKeyboardOnOpen,
     )
     Box(
         modifier = Modifier
