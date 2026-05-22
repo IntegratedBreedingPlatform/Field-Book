@@ -25,7 +25,7 @@ class TraitRepository() {
             dataType = data_type,
             ontologyDbId = ontology_db_id,
             ontologyName = ontology_name,
-            details = observation_variable_details
+            details = observation_variable_details,
         )
     }
 
@@ -62,7 +62,8 @@ class TraitRepository() {
                 dataType = it.data_type,
                 ontologyDbId = it.ontology_db_id,
                 ontologyName = it.ontology_name,
-                details = it.observation_variable_details
+                details = it.observation_variable_details,
+                closeKeyboardOnOpen = it.closeKeyboardOnOpen == "true"
             )
         }
     }
@@ -87,7 +88,8 @@ class TraitRepository() {
                 dataType = it.data_type,
                 ontologyDbId = it.ontology_db_id,
                 ontologyName = it.ontology_name,
-                details = it.observation_variable_details
+                details = it.observation_variable_details,
+                closeKeyboardOnOpen = it.closeKeyboardOnOpen == "true"
             )
         }
     }
@@ -117,7 +119,8 @@ class TraitRepository() {
                 dataType = it.data_type,
                 ontologyDbId = it.ontology_db_id,
                 ontologyName = it.ontology_name,
-                details = it.observation_variable_details
+                details = it.observation_variable_details,
+                closeKeyboardOnOpen = it.closeKeyboardOnOpen == "true"
             )
         }
     }
@@ -180,6 +183,7 @@ class TraitRepository() {
             "validValuesMin" to (trait.minimum ?: ""),
             "validValuesMax" to (trait.maximum ?: ""),
             "category" to (trait.categories ?: ""),
+            "closeKeyboardOnOpen" to trait.closeKeyboardOnOpen.toString(),
         )
 
         attrs.forEach { (attrName, attrValue) ->
@@ -207,6 +211,7 @@ class TraitRepository() {
             "validValuesMin" to (trait.minimum ?: ""),
             "validValuesMax" to (trait.maximum ?: ""),
             "category" to (trait.categories ?: ""),
+            "closeKeyboardOnOpen" to trait.closeKeyboardOnOpen.toString(),
         )
 
         attrs.forEach { (attrName, attrValue) ->
