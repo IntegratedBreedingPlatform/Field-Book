@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.fieldbook.shared.database.repository.StudyRepository
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.database.repository.ObservationRepository
 import com.fieldbook.shared.database.repository.TraitRepository
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 class TraitEditorScreenViewModel(
     private val traitRepository: TraitRepository = TraitRepository(),
     private val observationRepository: ObservationRepository = ObservationRepository(),
+    private val studyRepository: StudyRepository = StudyRepository(),
     private val settings: Settings = Settings()
 ) : ViewModel() {
 
@@ -178,6 +180,15 @@ class TraitEditorScreenViewModel(
     fun traitHasObservations(traitId: Long?): Boolean {
         if (traitId == null) return false
         return observationRepository.hasObservationsForTrait(traitId)
+    }
+
+    fun shouldShowBrapiInfoAfterTraitSave(): Boolean {
+        val fieldId = settings.getInt(GeneralKeys.SELECTED_FIELD_ID.key, -1)
+        if (fieldId <= 0) return false
+
+        val field = studyRepository.getById(fieldId)
+        return field.exp_name.isNotBlank() &&
+            field.exp_source.equals("brapi", ignoreCase = true)
     }
 
     fun refresh() {
