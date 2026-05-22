@@ -130,7 +130,6 @@ fun TraitEditorScreen(
     var topBarMenuExpanded by remember { mutableStateOf(false) }
     var exportFileName by remember { mutableStateOf(defaultTraitExportName()) }
     var showBrapiInfoDialog by remember { mutableStateOf(false) }
-    var brapiInfoDialogShown by remember { mutableStateOf(false) }
     val settings = remember { Settings() }
     val defaultBrapiDisplayName = stringResource(Res.string.brapi_edit_display_name_default)
     val brapiEnabled = remember { settings.getBoolean(PreferenceKeys.BRAPI_ENABLED, false) }
@@ -164,8 +163,7 @@ fun TraitEditorScreen(
     }
 
     fun handleTraitSaveSuccess() {
-        if (!brapiInfoDialogShown && viewModel.shouldShowBrapiInfoAfterTraitSave()) {
-            brapiInfoDialogShown = true
+        if (viewModel.shouldShowBrapiInfoAfterTraitSave()) {
             showBrapiInfoDialog = true
         }
     }
