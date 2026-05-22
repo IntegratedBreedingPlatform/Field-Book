@@ -303,5 +303,6 @@ private fun traitHasChanges(
         (initialTrait.minimum ?: "") != (currentTrait.minimum ?: "") ||
         (initialTrait.maximum ?: "") != (currentTrait.maximum ?: "") ||
         (initialTrait.details ?: "") != (currentTrait.details ?: "") ||
-        (initialTrait.categories ?: "") != (currentTrait.categories ?: "")
+        (initialTrait.categories ?: "") != (currentTrait.categories ?: "") ||
+        initialTrait.closeKeyboardOnOpen != currentTrait.closeKeyboardOnOpen
 }
