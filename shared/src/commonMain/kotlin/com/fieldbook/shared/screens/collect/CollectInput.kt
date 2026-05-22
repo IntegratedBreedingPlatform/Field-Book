@@ -52,6 +52,8 @@ fun CollectInput(
     val trait = controller.traits.getOrNull(controller.currentTraitIndex)
     val values = trait?.let { controller.traitValues[it.id] } ?: emptyList()
     val value = values.firstOrNull() ?: ""
+    val normalizedTraitFormat = trait?.format?.trim().orEmpty()
+    val normalizedTraitName = trait?.name?.trim().orEmpty()
     val currentPlotId = controller.units
         .getOrNull(controller.currentUnitIndex)
         ?.observation_unit_db_id
@@ -67,9 +69,13 @@ fun CollectInput(
     val fontColor =
         if (isEdited) AppColors.fb_color_text_dark.color else controller.getDisplayColor()
 
-    val formatEnum = trait?.format?.let { formatStr ->
+    val formatEnum = normalizedTraitFormat.takeIf { it.isNotBlank() }?.let { formatStr ->
         Formats.entries.find { it.databaseName.equals(formatStr, ignoreCase = true) }
     }
+    val isLocationTrait =
+        formatEnum == Formats.LOCATION ||
+            normalizedTraitFormat.equals(Formats.LOCATION.databaseName, ignoreCase = true) ||
+            normalizedTraitName.equals("location", ignoreCase = true)
     val usesLazyVerticalInput =
         formatEnum == Formats.CATEGORICAL || formatEnum == Formats.MULTI_CATEGORICAL
     val labelValPref = remember { Settings() }
@@ -149,7 +155,7 @@ fun CollectInput(
 
         Spacer(Modifier.height(16.dp))
 
-        if (formatEnum == Formats.TEXT) {
+        if (formatEnum == Formats.TEXT && !isLocationTrait) {
             key(currentPlotId, currentTraitId) {
                 EditableValueText(
                     value = value,
@@ -282,11 +288,28 @@ fun TraitInputHost(
     onExpandPhotoTrait: () -> Unit = {},
 ) {
     val value = values.firstOrNull() ?: ""
-    val formatEnum = trait?.format?.let { formatStr ->
+    val normalizedTraitFormat = trait?.format?.trim().orEmpty()
+    val normalizedTraitName = trait?.name?.trim().orEmpty()
+    val formatEnum = normalizedTraitFormat.takeIf { it.isNotBlank() }?.let { formatStr ->
         Formats.entries.find { it.databaseName.equals(formatStr, ignoreCase = true) }
     }
+    val isLocationTrait =
+        formatEnum == Formats.LOCATION ||
+            normalizedTraitFormat.equals(Formats.LOCATION.databaseName, ignoreCase = true) ||
+            normalizedTraitName.equals("location", ignoreCase = true)
 
-    when (formatEnum) {
+    when {
+        isLocationTrait -> LocationTrait(
+            value = value,
+            onValueChange = {
+                controller.updateCurrentTraitValue(it)
+                onEdited()
+            },
+            onValidationError = controller::showInputValidationMessage,
+            modifier = modifier.fillMaxWidth().padding(8.dp)
+        )
+
+        else -> when (formatEnum) {
         Formats.NUMERIC -> NumericTrait(
             value = value,
             defaultValue = trait?.defaultValue,
@@ -302,7 +325,7 @@ fun TraitInputHost(
         )
 
         Formats.ANGLE -> NotImplementedTrait(
-            traitFormat = trait.format!!,
+            traitFormat = normalizedTraitFormat.ifBlank { "angle" },
         )
 
         Formats.CATEGORICAL -> CategoricalTrait(
@@ -387,10 +410,6 @@ fun TraitInputHost(
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
-        Formats.LOCATION ->NotImplementedTrait(
-            traitFormat = trait.format!!,
-        )
-
         Formats.CAMERA -> {
             PhotoTrait(
                 values = values,
@@ -409,9 +428,9 @@ fun TraitInputHost(
         }
 
         // Add more as needed, or use legacy string fallback for custom/unknown
-        else -> when (trait?.format) {
+        else -> when (normalizedTraitFormat.lowercase()) {
             "barcode" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
+                traitFormat = normalizedTraitFormat,
             )
 
             "disease", "disease_rating", "disease rating", "rust rating" -> DiseaseRatingTrait(
@@ -425,11 +444,21 @@ fun TraitInputHost(
             )
 
             "gnss", "gps" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
+                traitFormat = normalizedTraitFormat,
+            )
+
+            "location" -> LocationTrait(
+                value = value,
+                onValueChange = {
+                    controller.updateCurrentTraitValue(it)
+                    onEdited()
+                },
+                onValidationError = controller::showInputValidationMessage,
+                modifier = modifier.fillMaxWidth().padding(8.dp)
             )
 
             "labelprint", "label_print" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
+                traitFormat = normalizedTraitFormat,
             )
 
             "audio" -> AudioTrait(
@@ -443,7 +472,7 @@ fun TraitInputHost(
             )
 
             "usb_camera", "gopro", "canon" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
+                traitFormat = normalizedTraitFormat,
             )
 
             else -> {
@@ -460,6 +489,7 @@ fun TraitInputHost(
                     closeKeyboardOnOpen = trait?.closeKeyboardOnOpen == true,
                 )
             }
+        }
         }
     }
 }
