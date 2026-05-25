@@ -324,8 +324,13 @@ fun TraitInputHost(
                 .padding(8.dp)
         )
 
-        Formats.ANGLE -> NotImplementedTrait(
-            traitFormat = normalizedTraitFormat.ifBlank { "angle" },
+        Formats.ANGLE -> AngleTrait(
+            value = value,
+            onValueChange = {
+                controller.updateCurrentTraitValue(it)
+                onEdited()
+            },
+            modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
         Formats.CATEGORICAL -> CategoricalTrait(
