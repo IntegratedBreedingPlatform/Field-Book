@@ -68,7 +68,7 @@ fun LocationTrait(
             },
             modifier = Modifier
                 .padding(8.dp)
-                .size(112.dp),
+                .size(78.dp),
             shape = CircleShape,
             color = TraitButtonDefaultColor,
             contentColor = Color.Black,
@@ -79,7 +79,7 @@ fun LocationTrait(
             Icon(
                 painter = painterResource(Res.drawable.ic_trait_location),
                 contentDescription = saveContentDescription,
-                modifier = Modifier.size(54.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
     }
