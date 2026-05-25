@@ -205,7 +205,7 @@ fun AudioTrait(
             shape = CircleShape,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(96.dp)
+            modifier = Modifier.size(78.dp)
         ) {
             Icon(
                 painter = painterResource(
@@ -217,7 +217,7 @@ fun AudioTrait(
                     }
                 ),
                 contentDescription = stringResource(Res.string.trait_audio_button_content_description),
-                modifier = Modifier.size(42.dp)
+                modifier = Modifier.size(28.dp)
             )
         }
     }
