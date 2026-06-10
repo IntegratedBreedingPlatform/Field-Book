@@ -138,6 +138,10 @@ fun TraitEditorScreen(
     }
     val scope = rememberCoroutineScope()
 
+    LaunchedEffect(Unit) {
+        viewModel.loadTraits()
+    }
+
     val importFilePicker = rememberFilePickerLauncher(
         type = PickerType.File(extensions = listOf("trt")),
         title = "Import trait file"

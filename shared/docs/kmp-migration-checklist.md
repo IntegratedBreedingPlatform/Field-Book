@@ -21,8 +21,8 @@
 | Create new field                 | :white_check_mark: | :white_check_mark: |
 | Edit field                       | :white_check_mark: | :white_check_mark: |
 | Switch field                     | :white_check_mark: | :white_check_mark: |
-| Delete field                     | :white_check_mark: |                    |
-| Import from file                 | :white_check_mark: |                    |
+| Delete field                     | :white_check_mark: | :white_check_mark: |
+| Import from file                 | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Field Details**                |                    |                    |
 | Edit field                       | :white_check_mark: | :white_check_mark: |
@@ -44,23 +44,23 @@
 | Export                           | :white_check_mark: | :white_check_mark: |
 | Sort                             | :white_check_mark: | :white_check_mark: |
 | Select all                       | :white_check_mark: | :white_check_mark: |
-| Import from file                 | :white_check_mark: |                    |
+| Import from file                 | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | ...                              |                    |                    |
 |                                  |                    |                    |
 | **Trait formats**                |                    |                    |
-| Audio                            |                    |                    |
+| Audio                            | :white_check_mark: | :white_check_mark: |
 | Boolean                          | :white_check_mark: | :white_check_mark: |
 | Categorical                      | :white_check_mark: | :white_check_mark: |
 | Multicategorial                  | :white_check_mark: | :white_check_mark: |
 | Counter                          | :white_check_mark: | :white_check_mark: |
 | Date                             | :white_check_mark: | :white_check_mark: |
-| Location                         |                    |                    |
+| Location                         | :white_check_mark: | :white_check_mark: |
 | Numeric                          | :white_check_mark: | :white_check_mark: |
 | Percent                          | :white_check_mark: | :white_check_mark: |
 | Text                             | :white_check_mark: | :white_check_mark: |
-| Angle                            |                    |                    |
-| Disease rating                   |                    |                    |
+| Angle                            | :white_check_mark: | :white_check_mark: |
+| Disease rating                   | :white_check_mark: | :white_check_mark: |
 | GNSS                             |                    |                    |
 | Zebra label print                |                    |                    |
 |                                  |                    |                    |
@@ -173,8 +173,10 @@
 | **Settings/Storage**             |                    |                    |
 | Define storage location          | :white_check_mark: | :white_check_mark: |
 | Import db (sample)               | :white_check_mark: | :white_check_mark: |
-| Import db (other file)           |                    |                    |
-| Export db                        |                    |                    |
+| Import db (other zip exports)    | :white_check_mark: | :white_check_mark: |
+| Import db (pref file xml)        | :white_check_mark: | :white_check_mark: |
+| Export db                        | :white_check_mark: | :white_check_mark: |
+| Export db (pref file xml)        | :white_check_mark: | :white_check_mark: |
 | Delete db                        | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Settings/Experimental**        |                    |                    |

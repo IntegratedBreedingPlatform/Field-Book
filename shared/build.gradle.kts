@@ -411,12 +411,16 @@ kotlin {
                 implementation(libs.coil.compose)
                 implementation(libs.reorderable)
                 implementation(libs.lazytable)
+                implementation(libs.compass.geolocation)
+                implementation(libs.compass.geolocation.mobile)
+                implementation(libs.ksensor)
+                implementation(libs.kmp.zip)
             }
         }
 
         commonTest {
             dependencies {
-                implementation("org.jetbrains.kotlin:kotlin-test:2.1.10")
+                implementation("org.jetbrains.kotlin:kotlin-test:2.3.10")
             }
         }
 

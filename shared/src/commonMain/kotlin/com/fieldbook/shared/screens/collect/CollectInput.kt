@@ -14,8 +14,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -24,19 +24,20 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.fieldbook.shared.preferences.PreferenceKeys
+import com.fieldbook.shared.screens.collect.traits.AngleTrait
 import com.fieldbook.shared.screens.collect.traits.BooleanTrait
 import com.fieldbook.shared.screens.collect.traits.CategoricalTrait
 import com.fieldbook.shared.screens.collect.traits.CounterTrait
 import com.fieldbook.shared.screens.collect.traits.DateTrait
 import com.fieldbook.shared.screens.collect.traits.DiseaseRatingTrait
-import com.fieldbook.shared.screens.collect.traits.NumericTrait
 import com.fieldbook.shared.screens.collect.traits.AngleTrait
 import com.fieldbook.shared.screens.collect.traits.AudioTrait
 import com.fieldbook.shared.screens.collect.traits.LocationTrait
+import com.fieldbook.shared.screens.collect.traits.NumericTrait
 import com.fieldbook.shared.screens.collect.traits.PercentTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
 import com.fieldbook.shared.screens.collect.traits.TextTrait
-import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.theme.AppColors
 import com.fieldbook.shared.traits.Formats
 import com.fieldbook.shared.utilities.CategoryJsonUtil
@@ -282,6 +283,7 @@ fun TraitInputHost(
     onExpandPhotoTrait: () -> Unit = {},
 ) {
     val value = values.firstOrNull() ?: ""
+    val normalizedTraitFormat = trait?.format?.trim().orEmpty()
     val formatEnum = trait?.format?.let { formatStr ->
         Formats.entries.find { it.databaseName.equals(formatStr, ignoreCase = true) }
     }
@@ -301,8 +303,13 @@ fun TraitInputHost(
                 .padding(8.dp)
         )
 
-        Formats.ANGLE -> NotImplementedTrait(
-            traitFormat = trait.format!!,
+        Formats.ANGLE -> AngleTrait(
+            value = value,
+            onValueChange = {
+                controller.updateCurrentTraitValue(it)
+                onEdited()
+            },
+            modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
         Formats.CATEGORICAL -> CategoricalTrait(
@@ -387,8 +394,13 @@ fun TraitInputHost(
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
-        Formats.LOCATION ->NotImplementedTrait(
-            traitFormat = trait.format!!,
+        Formats.LOCATION -> LocationTrait(
+            value = value,
+            onValueChange = {
+                controller.updateCurrentTraitValue(it)
+                onEdited()
+            },
+            modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
         Formats.CAMERA -> {
@@ -409,42 +421,21 @@ fun TraitInputHost(
         }
 
         // Add more as needed, or use legacy string fallback for custom/unknown
-        else -> when (trait?.format) {
-            "barcode" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
-            )
-
+        else -> when (normalizedTraitFormat.lowercase()) {
             "disease", "disease_rating", "disease rating", "rust rating" -> DiseaseRatingTrait(
                 value = value,
                 onValueChange = {
                     controller.updateCurrentTraitValue(it)
                     onEdited()
                 },
-                onValidationError = controller::showInputValidationMessage,
+                onValidationError = { },
                 modifier = modifier.fillMaxWidth().padding(8.dp)
             )
 
-            "gnss", "gps" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
-            )
-
-            "labelprint", "label_print" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
-            )
-
-            "audio" -> AudioTrait(
-                value = value,
-                onValueChange = {
-                    controller.updateCurrentTraitValue(it)
-                    onEdited()
-                },
-                controller = controller,
+           /* else -> NotImplementedTrait(
+                traitFormat = trait?.format ?: "unknown",
                 modifier = modifier.fillMaxWidth().padding(8.dp)
-            )
-
-            "usb_camera", "gopro", "canon" -> NotImplementedTrait(
-                traitFormat = trait.format!!,
-            )
+            )*/
 
             else -> {
                 EditableValueText(
