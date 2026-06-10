@@ -45,7 +45,6 @@ enum class Formats(
             MULTI_CATEGORICAL,
             COUNTER,
             DATE,
-            LOCATION,
             NUMERIC,
             PERCENT,
             TEXT,

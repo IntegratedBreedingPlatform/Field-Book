@@ -155,12 +155,10 @@ class TraitRepository() {
     }
 
     fun insertTrait(trait: TraitObject) {
-        val normalizedFormat = trait.format?.trim().takeUnless { it.isNullOrBlank() }
-
         // insert the base observation_variables row
         db.observation_variablesQueries.insertTrait(
             trait.name,
-            normalizedFormat,
+            trait.format,
             trait.defaultValue,
             trait.visible,
             trait.realPosition.toLong(),
@@ -200,14 +198,10 @@ class TraitRepository() {
 
     fun updateTrait(trait: TraitObject) {
         val traitId = trait.id ?: return
-        val persistedFormat = db.observation_variablesQueries.getTraitById(traitId)
-            .executeAsOneOrNull()
-            ?.observation_variable_field_book_format
-        val normalizedFormat = trait.format?.trim().takeUnless { it.isNullOrBlank() } ?: persistedFormat
 
         db.observation_variablesQueries.updateTrait(
             trait.name,
-            normalizedFormat,
+            trait.format,
             trait.defaultValue,
             trait.details,
             traitId

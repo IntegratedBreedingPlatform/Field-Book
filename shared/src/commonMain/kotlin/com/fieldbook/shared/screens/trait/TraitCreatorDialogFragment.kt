@@ -49,20 +49,13 @@ fun TraitCreatorDialog(
     )
 ) {
     val isEditing = initialTrait != null
-    val initialSelectedFormat = initialTrait?.format?.let { format ->
-        Formats.supportedFormats().firstOrNull {
-            it.databaseName.equals(format.trim(), ignoreCase = true)
-        }
+    var currentStep by remember(initialTrait?.id) {
+        mutableStateOf(if (isEditing) TraitCreatorStep.NameDetails else TraitCreatorStep.ChooseFormat)
     }
     var selectedFormat by remember(initialTrait?.id) {
-        mutableStateOf(initialSelectedFormat)
-    }
-    var currentStep by remember(initialTrait?.id) {
         mutableStateOf(
-            if (isEditing && initialSelectedFormat != null) {
-                TraitCreatorStep.NameDetails
-            } else {
-                TraitCreatorStep.ChooseFormat
+            initialTrait?.format?.let { format ->
+                Formats.supportedFormats().firstOrNull { it.databaseName == format }
             }
         )
     }
@@ -140,7 +133,7 @@ fun TraitCreatorDialog(
                 (initialTrait?.copy() ?: TraitObject()).apply {
                     name = traitName
                     details = traitDetails
-                    format = selectedFormat?.databaseName ?: initialTrait?.format?.trim()
+                    format = selectedFormat?.databaseName
                     visible = visible ?: "true"
                     traitDataSource = traitDataSource ?: "local"
                 }
