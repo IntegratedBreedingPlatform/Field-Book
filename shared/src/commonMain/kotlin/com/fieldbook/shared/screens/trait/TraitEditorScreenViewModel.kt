@@ -321,14 +321,14 @@ class TraitEditorScreenViewModel(
             positionOffset = positionOffset
         )
 
-        importedTraits.forEach(traitRepository::insertTrait)
+        val savedCount = importedTraits.count { traitRepository.insertTrait(it) }
         loadTraits()
 
         _messages.emit(
-            if (importedTraits.isEmpty()) {
+            if (savedCount == 0) {
                 "No traits were imported"
             } else {
-                "Imported ${importedTraits.size} trait(s)"
+                "Imported $savedCount trait(s)"
             }
         )
     }
