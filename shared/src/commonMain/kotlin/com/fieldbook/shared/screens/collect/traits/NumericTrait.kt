@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,9 +21,15 @@ import com.fieldbook.shared.theme.numericButtonDefaults
 @Composable
 fun NumericTrait(
     value: String,
+    defaultValue: String? = null,
+    useDefaultValue: Boolean = true,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var defaultSuppressed by remember(value, useDefaultValue) {
+        mutableStateOf(!useDefaultValue)
+    }
+    val effectiveValue = if (value.isEmpty() && !defaultSuppressed) defaultValue.orEmpty() else value
     val buttons = listOf(
         listOf(";", "1", "2", "3"),
         listOf("+", "4", "5", "6"),
@@ -39,9 +49,19 @@ fun NumericTrait(
                     Button(
                         onClick = {
                             when (label) {
-                                "⌫" -> if (value.isNotEmpty()) onValueChange(value.dropLast(1))
-                                "." -> if (!value.contains('.')) onValueChange(value + label)
-                                else -> onValueChange(value + label)
+                                "⌫" -> if (effectiveValue.isNotEmpty()) {
+                                    val nextValue = effectiveValue.dropLast(1)
+                                    defaultSuppressed = nextValue.isEmpty()
+                                    onValueChange(nextValue)
+                                }
+                                "." -> if (!effectiveValue.contains('.')) {
+                                    defaultSuppressed = false
+                                    onValueChange(effectiveValue + label)
+                                }
+                                else -> {
+                                    defaultSuppressed = false
+                                    onValueChange(effectiveValue + label)
+                                }
                             }
                         },
                         selected = false,
@@ -52,6 +72,7 @@ fun NumericTrait(
                                 onClick = {},
                                 onLongClick = {
                                     if (label == "⌫") {
+                                        defaultSuppressed = true
                                         onValueChange("")
                                     }
                                 }

@@ -15,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.chevron_left
@@ -63,6 +65,20 @@ fun TraitBox(
 
                 )
             }
+        }
+        val trait = viewModel.traits.getOrNull(viewModel.currentTraitIndex)
+        val traitDetails = trait?.details?.takeIf { it.isNotBlank() }
+        if (traitDetails != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = traitDetails,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
+                    .padding(horizontal = 16.dp),
+                textAlign = TextAlign.Center
+            )
         }
         Spacer(Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth()) {

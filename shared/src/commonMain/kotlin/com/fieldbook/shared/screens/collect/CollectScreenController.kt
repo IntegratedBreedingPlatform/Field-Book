@@ -12,11 +12,17 @@ import com.fieldbook.shared.database.repository.ObservationUnitPropertyRepositor
 import com.fieldbook.shared.database.repository.ObservationUnitRepository
 import com.fieldbook.shared.database.repository.StudyRepository
 import com.fieldbook.shared.database.repository.TraitRepository
+import com.fieldbook.shared.generated.resources.Res
+import com.fieldbook.shared.generated.resources.trait_error_maximum_value
+import com.fieldbook.shared.generated.resources.trait_error_minimum_value
 import com.fieldbook.shared.objects.RangeObject
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.screens.datagrid.DataGridSelection
 import com.fieldbook.shared.theme.AppColors
+import com.fieldbook.shared.traits.Formats
 import com.russhwolf.settings.Settings
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString
 
 
 // TODO refactor to use ViewModel() ?
@@ -60,8 +66,11 @@ class CollectScreenController {
     private var lastUnitId: String? = null
     private var restoredUnitSelection = false
     private var restoredTraitSelection = false
+    var inputValidationMessage by mutableStateOf<String?>(null)
+        private set
     var collectInteractionLocked by mutableStateOf(false)
         private set
+    private val suppressedDefaultEntries = mutableSetOf<String>()
 
     val primaryId = settings.getString(GeneralKeys.PRIMARY_NAME.key, "")
     val secondaryId = settings.getString(GeneralKeys.SECONDARY_NAME.key, "")
@@ -115,23 +124,29 @@ class CollectScreenController {
         }
     }
 
-    fun updateCurrentUnitIndex(index: Int) {
-        if (index in units.indices) {
+    fun updateCurrentUnitIndex(index: Int): Boolean {
+        if (index in units.indices && validateCurrentTraitValue()) {
             currentUnitIndex = index
             rangeID.getOrNull(index)?.let(::updateCurrentRange)
             persistCurrentSelection()
             loadTraitValues()
+            return true
         }
+        return false
     }
 
-    fun updateCurrentTraitIndex(index: Int) {
-        if (index in traits.indices) {
+    fun updateCurrentTraitIndex(index: Int): Boolean {
+        if (index in traits.indices && validateCurrentTraitValue()) {
             currentTraitIndex = index
             persistCurrentSelection()
+            return true
         }
+        return false
     }
 
     fun applyDataGridSelection(selection: DataGridSelection): Boolean {
+        if (!validateCurrentTraitValue()) return false
+
         val unitIndex = units.indexOfFirst { it.observation_unit_db_id == selection.plotId }
         val traitIndex = selection.traitId
             ?.let { selectedTraitId -> traits.indexOfFirst { it.id == selectedTraitId } }
@@ -166,6 +181,13 @@ class CollectScreenController {
         val plotId = unit?.observation_unit_db_id
 
         if (plotId != null && trait?.id != null) {
+            currentEntryKey(plotId, trait.id!!)?.let { entryKey ->
+                if (value.isBlank()) {
+                    suppressedDefaultEntries.add(entryKey)
+                } else {
+                    suppressedDefaultEntries.remove(entryKey)
+                }
+            }
             observationRepository.upsertObservation(
                 plotId = plotId,
                 traitDbId = trait.id!!,
@@ -196,6 +218,38 @@ class CollectScreenController {
                 }
             )
         }
+    }
+
+    fun shouldUseDefaultValue(traitId: Long?): Boolean {
+        val unit = units.getOrNull(currentUnitIndex)
+        val plotId = unit?.observation_unit_db_id
+        if (plotId == null || traitId == null) return false
+
+        val currentValue = traitValues[traitId]?.firstOrNull().orEmpty()
+        if (currentValue.isNotEmpty()) return false
+
+        return currentEntryKey(plotId, traitId)?.let { it !in suppressedDefaultEntries } == true
+    }
+
+    fun ensureCurrentTraitDefaultValueApplied() {
+        val trait = traits.getOrNull(currentTraitIndex) ?: return
+        val traitId = trait.id ?: return
+        val defaultValue = trait.defaultValue?.trim().orEmpty()
+        if (defaultValue.isEmpty()) return
+        if (!shouldUseDefaultValue(traitId)) return
+
+        val supportsDefault = trait.format.equals(Formats.NUMERIC.databaseName, ignoreCase = true) ||
+            trait.format.equals(Formats.PERCENT.databaseName, ignoreCase = true) ||
+            trait.format.equals(Formats.BOOLEAN.databaseName, ignoreCase = true)
+        if (!supportsDefault) return
+
+        if (trait.format.equals(Formats.BOOLEAN.databaseName, ignoreCase = true) &&
+            defaultValue.equals("UNSET", ignoreCase = true)
+        ) {
+            return
+        }
+
+        updateCurrentTraitValue(defaultValue)
     }
 
     /**
@@ -261,9 +315,39 @@ class CollectScreenController {
         return Color(storedArgb)
     }
 
+    fun clearInputValidationMessage() {
+        inputValidationMessage = null
+    }
+
+    fun showInputValidationMessage(message: String) {
+        inputValidationMessage = message
+    }
+
     fun updateCollectInteractionLocked(locked: Boolean) {
         collectInteractionLocked = locked
     }
+
+    fun clearCurrentTraitValue() {
+        val trait = traits.getOrNull(currentTraitIndex)
+        val unit = units.getOrNull(currentUnitIndex)
+        val plotId = unit?.observation_unit_db_id
+        val traitId = trait?.id
+        val currentValue = traitId?.let { traitValues[it]?.firstOrNull() }.orEmpty()
+
+        if (plotId != null && traitId != null) {
+            currentEntryKey(plotId, traitId)?.let { suppressedDefaultEntries.add(it) }
+            observationRepository.deleteTraitByValue(
+                plotId = plotId,
+                traitDbId = traitId,
+                value = currentValue,
+                studyId = studyId.toLong()
+            )
+            traitValues = traitValues.toMutableMap().apply {
+                remove(traitId)
+            }
+        }
+    }
+
     fun persistCurrentSelection() {
         currentRangeUniqueId()?.let {
             settings.putString(lastPlotKey(), it)
@@ -336,4 +420,49 @@ class CollectScreenController {
     private fun lastPlotKey(): String = "${GeneralKeys.LAST_PLOT.key}_$studyId"
 
     private fun lastTraitKey(): String = "${GeneralKeys.LAST_USED_TRAIT.key}_$studyId"
+
+    private fun currentEntryKey(plotId: String, traitId: Long): String = "$studyId::$plotId::$traitId"
+
+    private fun validateCurrentTraitValue(): Boolean {
+        val trait = traits.getOrNull(currentTraitIndex) ?: return true
+        val currentValue = trait.id?.let { traitValues[it]?.firstOrNull() }.orEmpty()
+        inputValidationMessage = validateNumericTraitValue(trait, currentValue)
+        if (inputValidationMessage != null) {
+            clearCurrentTraitValue()
+            return false
+        }
+        return true
+    }
+
+    private fun validateNumericTraitValue(trait: TraitObject, value: String): String? {
+        val isNumericTrait = trait.format.equals(Formats.NUMERIC.databaseName, ignoreCase = true)
+        if (!isNumericTrait) return null
+        if (value.isBlank() || value == "NA") return null
+
+        val minimum = trait.minimum?.trim().orEmpty()
+        val maximum = trait.maximum?.trim().orEmpty()
+        if (minimum.isEmpty() && maximum.isEmpty()) return null
+
+        val parsedValue = value.toDoubleOrNull()
+
+        if (maximum.isNotEmpty()) {
+            val upperValue = maximum.toDoubleOrNull()
+            if (parsedValue == null || upperValue == null || parsedValue > upperValue) {
+                return runBlocking {
+                    getString(Res.string.trait_error_maximum_value)
+                }
+            }
+        }
+
+        if (minimum.isNotEmpty()) {
+            val lowerValue = minimum.toDoubleOrNull()
+            if (parsedValue == null || lowerValue == null || parsedValue < lowerValue) {
+                return runBlocking {
+                    getString(Res.string.trait_error_minimum_value)
+                }
+            }
+        }
+
+        return null
+    }
 }

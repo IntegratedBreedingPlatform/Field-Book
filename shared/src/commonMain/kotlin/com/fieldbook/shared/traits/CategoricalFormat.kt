@@ -1,16 +1,29 @@
 package com.fieldbook.shared.traits
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,16 +35,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.ic_plus
+import com.fieldbook.shared.generated.resources.ic_transfer_cancelled
 import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.ic_trait_categorical
+import com.fieldbook.shared.generated.resources.trait_error_category_duplicate
 import com.fieldbook.shared.generated.resources.traits_format_categorical
 import com.fieldbook.shared.utilities.BrAPIScaleValidValuesCategories
 import com.fieldbook.shared.utilities.CategoryJsonUtil
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 class CategoricalFormat : TraitFormat(
     format = Formats.CATEGORICAL,
@@ -47,7 +64,7 @@ class CategoricalFormat : TraitFormat(
     @Composable
     override fun ParametersEditor(trait: TraitObject, onTraitChange: (TraitObject) -> Unit) {
         val initialList = CategoryJsonUtil.decodeDefinition(trait.categories)
-            .map { it.label ?: it.value ?: "" }
+            .map { it.value ?: it.label ?: "" }
             .filter { it.isNotEmpty() }
         val items = remember {
             mutableStateListOf<CategoryItem>().apply {
@@ -57,31 +74,79 @@ class CategoricalFormat : TraitFormat(
         var nextId by remember(items) { mutableStateOf(items.size) }
         var input by remember { mutableStateOf("") }
         var error by remember { mutableStateOf("") }
+        val categoryListHeight = 288.dp
+        val duplicateCategoryMessage = stringResource(Res.string.trait_error_category_duplicate)
 
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.5.dp, Color.Black, RoundedCornerShape(6.dp))
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            TraitEditorTitle("Categories")
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedTextField(
+                BasicTextField(
                     value = input,
                     onValueChange = { input = it },
-                    label = { Text("Add category") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        if (input.isBlank()) {
+                            Text(
+                                text = "Type a category name to add",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        innerTextField()
+                    }
                 )
 
-                FilledIconButton(onClick = {
-                    val v = input.trim()
-                    if (v.isNotEmpty()) {
-                        items.add(CategoryItem(id = nextId++, value = v))
-                        input = ""
-                        error = ""
-                        trait.categories = encode(items)
-                        onTraitChange(trait)
-                    } else {
-                        error = "Cannot add empty category"
+                if (input.isNotBlank()) {
+                    IconButton(
+                        onClick = { input = "" },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_transfer_cancelled),
+                            contentDescription = "Clear text",
+                            tint = Color.Gray
+                        )
                     }
-                }) {
+                }
+
+                FilledIconButton(
+                    onClick = {
+                        val v = input.trim()
+                        if (v.isNotEmpty()) {
+                            val normalizedValue = v.lowercase()
+                            val alreadyExists = items.any { existing ->
+                                existing.value.trim().lowercase() == normalizedValue
+                            }
+
+                            if (alreadyExists) {
+                                error = duplicateCategoryMessage
+                            } else {
+                                items.add(CategoryItem(id = nextId++, value = v))
+                                input = ""
+                                error = ""
+                                trait.categories = encode(items)
+                                onTraitChange(trait)
+                            }
+                        } else {
+                            error = "Cannot add empty category"
+                        }
+                    },
+                    modifier = Modifier.size(36.dp),
+                    shape = CircleShape
+                ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_plus),
                         contentDescription = "Add"
@@ -89,42 +154,53 @@ class CategoricalFormat : TraitFormat(
                 }
             }
 
+            TraitEditorUnderline()
+
             if (error.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(error, color = MaterialTheme.colorScheme.error)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = categoryListHeight)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Column {
+                    items.forEachIndexed { _, item ->
+                        key(item.id) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = item.value,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f)
+                                )
 
-            items.forEach { item ->
-                key(item.id) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = item.value,
-                            onValueChange = { updatedValue ->
-                                val itemIndex = items.indexOfFirst { it.id == item.id }
-                                if (itemIndex >= 0) {
-                                    items[itemIndex] = item.copy(value = updatedValue)
-                                    trait.categories = encode(items)
-                                    onTraitChange(trait)
+                                FilledIconButton(
+                                    onClick = {
+                                        items.removeAll { it.id == item.id }
+                                        trait.categories = encode(items)
+                                        onTraitChange(trait)
+                                    },
+                                    modifier = Modifier.size(34.dp),
+                                    shape = CircleShape
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "Delete"
+                                    )
                                 }
-                            },
-                            modifier = Modifier.weight(1f),
-                            label = { Text("Category") }
-                        )
+                            }
 
-                        FilledIconButton(onClick = {
-                            items.removeAll { it.id == item.id }
-                            trait.categories = encode(items)
-                            onTraitChange(trait)
-                        }) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_tb_delete),
-                                contentDescription = "Delete"
+                            HorizontalDivider(
+                                thickness = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant
                             )
                         }
                     }

@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.fieldbook.shared.database.repository.StudyRepository
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.database.repository.ObservationRepository
 import com.fieldbook.shared.database.repository.TraitRepository
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.dir_trait
+import com.fieldbook.shared.objects.ImportFormat
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.utilities.CSVUtil
 import com.fieldbook.shared.utilities.DocumentFile
@@ -27,6 +29,7 @@ import kotlinx.coroutines.launch
 class TraitEditorScreenViewModel(
     private val traitRepository: TraitRepository = TraitRepository(),
     private val observationRepository: ObservationRepository = ObservationRepository(),
+    private val studyRepository: StudyRepository = StudyRepository(),
     private val settings: Settings = Settings()
 ) : ViewModel() {
 
@@ -176,6 +179,19 @@ class TraitEditorScreenViewModel(
         return observationRepository.hasObservationsForTrait(traitId)
     }
 
+    fun shouldShowBrapiInfoAfterTraitSave(
+        isEditing: Boolean,
+        hasObservations: Boolean,
+    ): Boolean {
+        if (!isEditing || !hasObservations) return false
+
+        val fieldId = settings.getInt(GeneralKeys.SELECTED_FIELD_ID.key, -1)
+        if (fieldId <= 0) return false
+
+        val field = studyRepository.getById(fieldId)
+        return ImportFormat.fromString(field.import_format) == ImportFormat.BRAPI
+    }
+
     fun refresh() {
         loadTraits()
     }
@@ -305,14 +321,14 @@ class TraitEditorScreenViewModel(
             positionOffset = positionOffset
         )
 
-        importedTraits.forEach(traitRepository::insertTrait)
+        val savedCount = importedTraits.count { traitRepository.insertTrait(it) }
         loadTraits()
 
         _messages.emit(
-            if (importedTraits.isEmpty()) {
+            if (savedCount == 0) {
                 "No traits were imported"
             } else {
-                "Imported ${importedTraits.size} trait(s)"
+                "Imported $savedCount trait(s)"
             }
         )
     }

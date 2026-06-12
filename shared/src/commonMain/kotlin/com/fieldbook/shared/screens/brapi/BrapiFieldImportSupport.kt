@@ -71,6 +71,7 @@ object BrapiFieldImportSupport {
         }
 
         var fieldId = -1
+        var insertedTraits = 0
         db.transaction {
             fieldId = studyRepository.createField(
                 e = field,
@@ -88,13 +89,15 @@ object BrapiFieldImportSupport {
 
             val startingPosition = traitRepository.getMaxPositionFromTraits() + 1
             traits.forEachIndexed { index, trait ->
-                traitRepository.insertTrait(trait.toTraitObject(sourceUrl, startingPosition + index))
+                if (traitRepository.insertTrait(trait.toTraitObject(sourceUrl, startingPosition + index))) {
+                    insertedTraits++
+                }
             }
         }
 
         return BrapiFieldImportResult(
             fieldId = fieldId,
-            importedTraitCount = traits.size,
+            importedTraitCount = insertedTraits,
         )
     }
 

@@ -69,6 +69,9 @@ import com.fieldbook.shared.generated.resources.ic_ruler
 import com.fieldbook.shared.generated.resources.ic_sort
 import com.fieldbook.shared.generated.resources.ic_tb_toggle_all
 import com.fieldbook.shared.generated.resources.import_source_brapi
+import com.fieldbook.shared.generated.resources.brapi_info_message
+import com.fieldbook.shared.generated.resources.brapi_info_title
+import com.fieldbook.shared.generated.resources.dialog_close
 import com.fieldbook.shared.generated.resources.traits_dialog_export
 import com.fieldbook.shared.generated.resources.traits_sort_default
 import com.fieldbook.shared.generated.resources.traits_sort_format
@@ -119,12 +122,14 @@ fun TraitEditorScreen(
     var showLocalFilesDialog by remember { mutableStateOf(false) }
     var showCreator by remember { mutableStateOf(false) }
     var traitToEdit by remember { mutableStateOf<TraitObject?>(null) }
+    var traitToEditHasObservations by remember { mutableStateOf(false) }
     var localTraitFiles by remember { mutableStateOf<List<DocumentFile>>(emptyList()) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showDeleteAllDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var topBarMenuExpanded by remember { mutableStateOf(false) }
     var exportFileName by remember { mutableStateOf(defaultTraitExportName()) }
+    var showBrapiInfoDialog by remember { mutableStateOf(false) }
     val settings = remember { Settings() }
     val defaultBrapiDisplayName = stringResource(Res.string.brapi_edit_display_name_default)
     val brapiEnabled = remember { settings.getBoolean(PreferenceKeys.BRAPI_ENABLED, false) }
@@ -158,6 +163,15 @@ fun TraitEditorScreen(
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { message ->
             onSnackbarMessage(message)
+        }
+    }
+
+    fun handleTraitSaveSuccess(
+        isEditing: Boolean,
+        hasObservations: Boolean,
+    ) {
+        if (viewModel.shouldShowBrapiInfoAfterTraitSave(isEditing, hasObservations)) {
+            showBrapiInfoDialog = true
         }
     }
 
@@ -296,6 +310,7 @@ fun TraitEditorScreen(
                                             .padding(horizontal = 8.dp)
                                             .height(40.dp),
                                         onEditClick = {
+                                            traitToEditHasObservations = viewModel.traitHasObservations(it.id)
                                             traitToEdit = viewModel.getTraitForEdit(it.id)
                                         },
                                         onCopyClick = { viewModel.copyTrait(it) },
@@ -380,15 +395,33 @@ fun TraitEditorScreen(
             if (showCreator) {
                 TraitCreatorDialog(
                     onDismiss = { showCreator = false },
-                    onSuccess = { showCreator = false }
+                    onSuccess = {
+                        showCreator = false
+                        handleTraitSaveSuccess(
+                            isEditing = false,
+                            hasObservations = false,
+                        )
+                    }
                 )
             }
 
             if (traitToEdit != null) {
                 TraitCreatorDialog(
                     initialTrait = traitToEdit,
-                    onDismiss = { traitToEdit = null },
-                    onSuccess = { traitToEdit = null }
+                    observationsExistOverride = traitToEditHasObservations,
+                    onDismiss = {
+                        traitToEdit = null
+                        traitToEditHasObservations = false
+                    },
+                    onSuccess = {
+                        val hadObservations = traitToEditHasObservations
+                        traitToEdit = null
+                        traitToEditHasObservations = false
+                        handleTraitSaveSuccess(
+                            isEditing = true,
+                            hasObservations = hadObservations,
+                        )
+                    }
                 )
             }
 
@@ -431,6 +464,19 @@ fun TraitEditorScreen(
                     onExport = { fileName ->
                         viewModel.exportTraits(fileName)
                         showExportDialog = false
+                    }
+                )
+            }
+
+            if (showBrapiInfoDialog) {
+                AlertDialog(
+                    onDismissRequest = { showBrapiInfoDialog = false },
+                    title = { Text(stringResource(Res.string.brapi_info_title)) },
+                    text = { Text(stringResource(Res.string.brapi_info_message).trim()) },
+                    confirmButton = {
+                        TextButton(onClick = { showBrapiInfoDialog = false }) {
+                            Text(stringResource(Res.string.dialog_close))
+                        }
                     }
                 )
             }

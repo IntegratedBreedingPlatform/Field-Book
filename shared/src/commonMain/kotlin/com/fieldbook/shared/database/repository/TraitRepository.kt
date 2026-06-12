@@ -25,7 +25,7 @@ class TraitRepository() {
             dataType = data_type,
             ontologyDbId = ontology_db_id,
             ontologyName = ontology_name,
-            details = observation_variable_details
+            details = observation_variable_details,
         )
     }
 
@@ -62,7 +62,8 @@ class TraitRepository() {
                 dataType = it.data_type,
                 ontologyDbId = it.ontology_db_id,
                 ontologyName = it.ontology_name,
-                details = it.observation_variable_details
+                details = it.observation_variable_details,
+                closeKeyboardOnOpen = it.closeKeyboardOnOpen == "true"
             )
         }
     }
@@ -87,7 +88,8 @@ class TraitRepository() {
                 dataType = it.data_type,
                 ontologyDbId = it.ontology_db_id,
                 ontologyName = it.ontology_name,
-                details = it.observation_variable_details
+                details = it.observation_variable_details,
+                closeKeyboardOnOpen = it.closeKeyboardOnOpen == "true"
             )
         }
     }
@@ -117,7 +119,8 @@ class TraitRepository() {
                 dataType = it.data_type,
                 ontologyDbId = it.ontology_db_id,
                 ontologyName = it.ontology_name,
-                details = it.observation_variable_details
+                details = it.observation_variable_details,
+                closeKeyboardOnOpen = it.closeKeyboardOnOpen == "true"
             )
         }
     }
@@ -151,7 +154,22 @@ class TraitRepository() {
         return db.observation_variablesQueries.getMaxPositionFromTraits().executeAsOne().toInt()
     }
 
-    fun insertTrait(trait: TraitObject) {
+    fun getTraitByName(name: String): TraitObject? {
+        return db.observation_variablesQueries.getTraitByName(name).executeAsOneOrNull()?.toTraitObject()
+    }
+
+    fun getTraitByExternalDbId(externalDbId: String, traitDataSource: String): TraitObject? {
+        return db.observation_variablesQueries
+            .getTraitByExternalDbIdAndSource(externalDbId, traitDataSource)
+            .executeAsOneOrNull()
+            ?.toTraitObject()
+    }
+
+    fun insertTrait(trait: TraitObject): Boolean {
+        if (getTraitByName(trait.name) != null) {
+            return false
+        }
+
         // insert the base observation_variables row
         db.observation_variablesQueries.insertTrait(
             trait.name,
@@ -174,12 +192,13 @@ class TraitRepository() {
             trait.name,
             trait.realPosition.toLong()
         ).executeAsOneOrNull()
-        val insertedId = insertedRow?.internal_id_observation_variable ?: return
+        val insertedId = insertedRow?.internal_id_observation_variable ?: return false
 
         val attrs: Map<String, String> = mapOf(
             "validValuesMin" to (trait.minimum ?: ""),
             "validValuesMax" to (trait.maximum ?: ""),
             "category" to (trait.categories ?: ""),
+            "closeKeyboardOnOpen" to trait.closeKeyboardOnOpen.toString(),
         )
 
         attrs.forEach { (attrName, attrValue) ->
@@ -190,6 +209,8 @@ class TraitRepository() {
                 attrValue
             )
         }
+
+        return true
     }
 
     fun updateTrait(trait: TraitObject) {
@@ -207,6 +228,7 @@ class TraitRepository() {
             "validValuesMin" to (trait.minimum ?: ""),
             "validValuesMax" to (trait.maximum ?: ""),
             "category" to (trait.categories ?: ""),
+            "closeKeyboardOnOpen" to trait.closeKeyboardOnOpen.toString(),
         )
 
         attrs.forEach { (attrName, attrValue) ->

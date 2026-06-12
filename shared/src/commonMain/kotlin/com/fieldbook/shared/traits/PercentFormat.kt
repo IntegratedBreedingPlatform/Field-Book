@@ -1,9 +1,7 @@
 package com.fieldbook.shared.traits
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,9 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.fieldbook.shared.components.NumericOutlinedTextField
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.ic_trait_percent
@@ -28,65 +24,81 @@ class PercentFormat : TraitFormat(
     @Composable
     override fun ParametersEditor(trait: TraitObject, onTraitChange: (TraitObject) -> Unit) {
         var defaultVal by remember { mutableStateOf(trait.defaultValue ?: "") }
-        var minVal by remember { mutableStateOf(trait.minimum ?: "") }
+        var minVal by remember { mutableStateOf(trait.minimum ?: "0") }
         var maxVal by remember { mutableStateOf(trait.maximum ?: "100") }
 
         var generalError by remember { mutableStateOf("") }
 
-        Column {
-            NumericOutlinedTextField(
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TraitEditorTextField(
+                title = "Default",
+                placeholder = "Optional",
                 value = defaultVal,
                 onValueChange = { defaultVal = it },
-                label = { Text("Default") },
-                modifier = Modifier.fillMaxWidth(),
-                min = minVal.toDoubleOrNull(),
-                max = maxVal.toDoubleOrNull(),
-                onValidation = { err ->
-                    generalError = err ?: ""
-                    trait.defaultValue = defaultVal.ifBlank { null }
-                    trait.additionalInfo = generalError.ifBlank { null }
-                    onTraitChange(trait)
-                }
+                clearable = true,
+                numeric = true
             )
+            generalError = validatePercentValues(defaultVal, minVal, maxVal)
+            trait.defaultValue = defaultVal.ifBlank { null }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            NumericOutlinedTextField(
+            TraitEditorTextField(
+                title = "Minimum",
+                placeholder = "0",
                 value = minVal,
                 onValueChange = { minVal = it },
-                label = { Text("Minimum") },
-                modifier = Modifier.fillMaxWidth(),
-                min = 0.0,
-                max = maxVal.toDoubleOrNull(),
-                onValidation = { err ->
-                    generalError = err ?: ""
-                    trait.minimum = minVal.ifBlank { null }
-                    trait.additionalInfo = generalError.ifBlank { null }
-                    onTraitChange(trait)
-                }
+                clearable = true,
+                numeric = true
             )
+            generalError = validatePercentValues(defaultVal, minVal, maxVal)
+            trait.minimum = minVal.ifBlank { null }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            NumericOutlinedTextField(
+            TraitEditorTextField(
+                title = "Maximum",
+                placeholder = "100",
                 value = maxVal,
                 onValueChange = { maxVal = it },
-                label = { Text("Maximum") },
-                modifier = Modifier.fillMaxWidth(),
-                min = minVal.toDoubleOrNull(),
-                onValidation = { err ->
-                    generalError = err ?: ""
-                    trait.maximum = maxVal.ifBlank { null }
-                    trait.additionalInfo = generalError.ifBlank { null }
-                    onTraitChange(trait)
-                }
+                clearable = true,
+                numeric = true
             )
+            generalError = validatePercentValues(defaultVal, minVal, maxVal)
+            trait.maximum = maxVal.ifBlank { null }
+            trait.additionalInfo = generalError.ifBlank { null }
+            onTraitChange(trait)
 
             if (generalError.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(generalError, color = MaterialTheme.colorScheme.error)
             }
         }
     }
 
+}
+
+private fun validatePercentValues(
+    defaultVal: String,
+    minVal: String,
+    maxVal: String,
+): String {
+    val defaultNum = defaultVal.toDoubleOrNull()
+    val minNum = minVal.toDoubleOrNull()
+    val maxNum = maxVal.toDoubleOrNull()
+
+    if (defaultVal.isNotBlank() && defaultNum == null) return "Must be numeric"
+    if (minVal.isNotBlank() && minNum == null) return "Must be numeric"
+    if (maxVal.isNotBlank() && maxNum == null) return "Must be numeric"
+
+    if (minNum != null && maxNum != null && maxNum < minNum) {
+        return "Maximum must be greater than or equal to minimum"
+    }
+
+    if (defaultNum != null && minNum != null && defaultNum < minNum) {
+        return "Default must be greater than or equal to minimum"
+    }
+
+    if (defaultNum != null && maxNum != null && defaultNum > maxNum) {
+        return "Default must be less than or equal to maximum"
+    }
+
+    return ""
 }

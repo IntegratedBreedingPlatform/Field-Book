@@ -20,4 +20,5 @@ data class TraitObject(
     var observationVariableDbId: String? = null,
     var ontologyDbId: String? = null,
     var ontologyName: String? = null,
+    var closeKeyboardOnOpen: Boolean = false,
 )

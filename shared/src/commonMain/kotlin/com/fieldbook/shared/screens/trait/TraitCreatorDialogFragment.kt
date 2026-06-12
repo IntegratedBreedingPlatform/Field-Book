@@ -2,33 +2,15 @@ package com.fieldbook.shared.screens.trait
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -37,9 +19,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.dialog_back
+import com.fieldbook.shared.generated.resources.dialog_close
+import com.fieldbook.shared.generated.resources.dialog_confirm
+import com.fieldbook.shared.generated.resources.dialog_new_trait_observations_exist_error
+import com.fieldbook.shared.generated.resources.dialog_no
+import com.fieldbook.shared.generated.resources.dialog_yes
+import com.fieldbook.shared.theme.AlertDialog
 import com.fieldbook.shared.theme.Dialog
 import com.fieldbook.shared.theme.TextButton
 import com.fieldbook.shared.traits.Formats
+import com.fieldbook.shared.traits.TraitEditorTitle
+import com.fieldbook.shared.traits.TraitEditorTextField
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -51,6 +41,7 @@ private enum class TraitCreatorStep {
 @Composable
 fun TraitCreatorDialog(
     initialTrait: TraitObject? = null,
+    observationsExistOverride: Boolean? = null,
     onDismiss: () -> Unit,
     onSuccess: (TraitObject) -> Unit,
     viewModel: TraitEditorScreenViewModel = viewModel(
@@ -70,8 +61,14 @@ fun TraitCreatorDialog(
     }
     var traitName by remember(initialTrait?.id) { mutableStateOf(initialTrait?.name ?: "") }
     var traitDetails by remember(initialTrait?.id) { mutableStateOf(initialTrait?.details ?: "") }
-    val observationsExist = remember(initialTrait?.id) {
-        viewModel.traitHasObservations(initialTrait?.id)
+    var observationsExist by remember(initialTrait?.id, observationsExistOverride) {
+        mutableStateOf(observationsExistOverride == true)
+    }
+    var showDiscardChangesWarning by remember(initialTrait?.id) { mutableStateOf(false) }
+
+    LaunchedEffect(initialTrait?.id, observationsExistOverride) {
+        observationsExist = observationsExistOverride == true ||
+            (initialTrait?.id?.let(viewModel::traitHasObservations) == true)
     }
 
     when (currentStep) {
@@ -144,21 +141,57 @@ fun TraitCreatorDialog(
 
             var paramError by remember { mutableStateOf("") }
             val scrollState = rememberScrollState()
+            val useFormatSpecificEditor =
+                selectedFormat == Formats.TEXT ||
+                    selectedFormat == Formats.NUMERIC ||
+                    selectedFormat == Formats.BOOLEAN
+
+            if (showDiscardChangesWarning) {
+                AlertDialog(
+                    onDismissRequest = { showDiscardChangesWarning = false },
+                    title = { Text(stringResource(Res.string.dialog_close)) },
+                    text = { Text(stringResource(Res.string.dialog_confirm)) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showDiscardChangesWarning = false
+                            onDismiss()
+                        }) {
+                            Text(stringResource(Res.string.dialog_yes))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDiscardChangesWarning = false }) {
+                            Text(stringResource(Res.string.dialog_no))
+                        }
+                    }
+                )
+            }
+
+            val attemptDismiss = {
+                if (traitHasChanges(initialTrait, traitState, selectedFormat)) {
+                    showDiscardChangesWarning = true
+                } else {
+                    onDismiss()
+                }
+            }
 
             Dialog(
-                onDismissRequest = onDismiss,
+                onDismissRequest = attemptDismiss,
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    val maxDialogHeight = maxHeight * 0.9f
+
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight(0.9f),
+                            .wrapContentHeight()
+                            .heightIn(max = maxDialogHeight),
                         shape = RoundedCornerShape(12.dp),
                         tonalElevation = 4.dp
                     ) {
@@ -171,40 +204,49 @@ fun TraitCreatorDialog(
                         ) {
                             val title =
                                 selectedFormat?.let { stringResource(it.getTraitFormatDefinition().nameStringResource) }
-                            Text("${title ?: ""} Parameters", modifier = Modifier.padding(8.dp))
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                TraitEditorTitle("${title ?: ""} Parameters")
+                            }
 
-                            if (observationsExist) {
+                            if (isEditing && observationsExist) {
                                 Text(
-                                    text = "Observations already exist for this trait. Only the following parameters can be edited.",
+                                    text = stringResource(Res.string.dialog_new_trait_observations_exist_error),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
 
-                            OutlinedTextField(
-                                value = traitName,
-                                onValueChange = {
-                                    traitName = it
-                                    traitState.name = it
-                                },
-                                label = { Text("Name") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            if (!useFormatSpecificEditor) {
+                                TraitEditorTextField(
+                                    title = "Name",
+                                    placeholder = "Enter trait name",
+                                    value = traitName,
+                                    onValueChange = {
+                                        traitName = it
+                                        traitState.name = it
+                                    },
+                                    clearable = true,
+                                    isRequired = true
+                                )
 
-                            OutlinedTextField(
-                                value = traitDetails,
-                                onValueChange = {
-                                    traitDetails = it
-                                    traitState.details = it
-                                },
-                                label = { Text("Details") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                                TraitEditorTextField(
+                                    title = "Details",
+                                    placeholder = "Optional",
+                                    value = traitDetails,
+                                    onValueChange = {
+                                        traitDetails = it
+                                        traitState.details = it
+                                    },
+                                    clearable = true
+                                )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
 
                             selectedFormat?.getTraitFormatDefinition()
                                 ?.ParametersEditor(traitState) { updated ->
                                     paramError = updated.additionalInfo ?: ""
+                                    traitName = updated.name
+                                    traitDetails = updated.details ?: ""
                                 }
 
                             Row(
@@ -212,15 +254,13 @@ fun TraitCreatorDialog(
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 Row {
-                                    if (!isEditing || !observationsExist) {
-                                        TextButton(onClick = {
-                                            currentStep = TraitCreatorStep.ChooseFormat
-                                        }) {
-                                            Text(stringResource(Res.string.dialog_back))
-                                        }
+                                    TextButton(onClick = {
+                                        currentStep = TraitCreatorStep.ChooseFormat
+                                    }) {
+                                        Text(stringResource(Res.string.dialog_back))
                                     }
 
-                                    TextButton(onClick = onDismiss) {
+                                    TextButton(onClick = attemptDismiss) {
                                         Text("Cancel")
                                     }
 
@@ -230,7 +270,7 @@ fun TraitCreatorDialog(
                                         } else {
                                             viewModel.insertTrait(traitState)
                                         }
-                                        onSuccess(traitState)
+                                        onSuccess(traitState.copy())
                                     }, enabled = traitName.isNotBlank() && paramError.isBlank()) {
                                         Text("Save")
                                     }
@@ -242,4 +282,29 @@ fun TraitCreatorDialog(
             }
         }
     }
+}
+
+private fun traitHasChanges(
+    initialTrait: TraitObject?,
+    currentTrait: TraitObject,
+    selectedFormat: Formats?
+): Boolean {
+    if (initialTrait == null) {
+        return currentTrait.name.isNotBlank() ||
+            !currentTrait.defaultValue.isNullOrBlank() ||
+            !currentTrait.minimum.isNullOrBlank() ||
+            !currentTrait.maximum.isNullOrBlank() ||
+            !currentTrait.details.isNullOrBlank() ||
+            !currentTrait.categories.isNullOrBlank() ||
+            selectedFormat != null
+    }
+
+    return initialTrait.name != currentTrait.name ||
+        initialTrait.format != currentTrait.format ||
+        (initialTrait.defaultValue ?: "") != (currentTrait.defaultValue ?: "") ||
+        (initialTrait.minimum ?: "") != (currentTrait.minimum ?: "") ||
+        (initialTrait.maximum ?: "") != (currentTrait.maximum ?: "") ||
+        (initialTrait.details ?: "") != (currentTrait.details ?: "") ||
+        (initialTrait.categories ?: "") != (currentTrait.categories ?: "") ||
+        initialTrait.closeKeyboardOnOpen != currentTrait.closeKeyboardOnOpen
 }

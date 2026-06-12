@@ -1,9 +1,7 @@
 package com.fieldbook.shared.traits
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,9 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.fieldbook.shared.components.NumericOutlinedTextField
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.ic_trait_numeric
@@ -27,64 +23,121 @@ class NumericFormat : TraitFormat(
 
     @Composable
     override fun ParametersEditor(trait: TraitObject, onTraitChange: (TraitObject) -> Unit) {
+        var traitName by remember { mutableStateOf(trait.name) }
         var defaultVal by remember { mutableStateOf(trait.defaultValue ?: "") }
         var minVal by remember { mutableStateOf(trait.minimum ?: "") }
         var maxVal by remember { mutableStateOf(trait.maximum ?: "") }
-
+        var details by remember { mutableStateOf(trait.details ?: "") }
         var generalError by remember { mutableStateOf("") }
 
-        Column {
-            NumericOutlinedTextField(
+        fun validateAndPublish() {
+            generalError = validateNumericValues(defaultVal, minVal, maxVal)
+            trait.name = traitName
+            trait.defaultValue = defaultVal.ifBlank { null }
+            trait.minimum = minVal.ifBlank { null }
+            trait.maximum = maxVal.ifBlank { null }
+            trait.details = details.ifBlank { null }
+            trait.additionalInfo = generalError.ifBlank { null }
+            onTraitChange(trait)
+        }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TraitEditorTextField(
+                title = "Name",
+                placeholder = "Enter trait name",
+                value = traitName,
+                onValueChange = {
+                    traitName = it
+                    validateAndPublish()
+                },
+                clearable = true,
+                isRequired = true
+            )
+
+            TraitEditorTextField(
+                title = "Default",
+                placeholder = "Optional",
                 value = defaultVal,
-                onValueChange = { defaultVal = it },
-                label = { Text("Default") },
-                modifier = Modifier.fillMaxWidth(),
-                min = minVal.toDoubleOrNull(),
-                max = maxVal.toDoubleOrNull(),
-                onValidation = { err ->
-                    // set field-specific error into generalError for now
-                    generalError = err ?: ""
-                    trait.defaultValue = defaultVal.ifBlank { null }
-                    trait.additionalInfo = generalError.ifBlank { null }
-                    onTraitChange(trait)
-                }
+                onValueChange = {
+                    defaultVal = it
+                    validateAndPublish()
+                },
+                clearable = true,
+                numeric = true
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            NumericOutlinedTextField(
+            TraitEditorTextField(
+                title = "Minimum",
+                placeholder = "Optional",
                 value = minVal,
-                onValueChange = { minVal = it },
-                label = { Text("Minimum") },
-                modifier = Modifier.fillMaxWidth(),
-                onValidation = { err ->
-                    generalError = err ?: ""
-                    trait.minimum = minVal.ifBlank { null }
-                    trait.additionalInfo = generalError.ifBlank { null }
-                    onTraitChange(trait)
-                }
+                onValueChange = {
+                    minVal = it
+                    validateAndPublish()
+                },
+                clearable = true,
+                numeric = true
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            NumericOutlinedTextField(
+            TraitEditorTextField(
+                title = "Maximum",
+                placeholder = "Optional",
                 value = maxVal,
-                onValueChange = { maxVal = it },
-                label = { Text("Maximum") },
-                modifier = Modifier.fillMaxWidth(),
-                onValidation = { err ->
-                    generalError = err ?: ""
-                    trait.maximum = maxVal.ifBlank { null }
-                    trait.additionalInfo = generalError.ifBlank { null }
-                    onTraitChange(trait)
-                }
+                onValueChange = {
+                    maxVal = it
+                    validateAndPublish()
+                },
+                clearable = true,
+                numeric = true
+            )
+
+            TraitEditorTextField(
+                title = "Details",
+                placeholder = "Optional",
+                value = details,
+                onValueChange = {
+                    details = it
+                    validateAndPublish()
+                },
+                clearable = true
             )
 
             if (generalError.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(generalError, color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = generalError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
+}
 
+private fun validateNumericValues(
+    defaultVal: String,
+    minVal: String,
+    maxVal: String,
+): String {
+    val defaultNum = defaultVal.toDoubleOrNull()
+    val minNum = minVal.toDoubleOrNull()
+    val maxNum = maxVal.toDoubleOrNull()
+
+    if (defaultVal.isNotBlank() && defaultNum == null) return "Must be numeric"
+    if (minVal.isNotBlank() && minNum == null) return "Must be numeric"
+    if (maxVal.isNotBlank() && maxNum == null) return "Must be numeric"
+
+    if (minNum != null && maxNum != null && maxNum < minNum) {
+        return "Maximum must be greater than or equal to minimum"
+    }
+
+    if (defaultNum != null && minNum != null && defaultNum < minNum) {
+        return "Default must be greater than or equal to minimum"
+    }
+
+    if (defaultNum != null && maxNum != null && defaultNum > maxNum) {
+        return "Default must be less than or equal to maximum"
+    }
+
+    return ""
 }
