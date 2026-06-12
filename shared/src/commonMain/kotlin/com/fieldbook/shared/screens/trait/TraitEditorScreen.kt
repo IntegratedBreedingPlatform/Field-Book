@@ -166,8 +166,11 @@ fun TraitEditorScreen(
         }
     }
 
-    fun handleTraitSaveSuccess() {
-        if (viewModel.shouldShowBrapiInfoAfterTraitSave()) {
+    fun handleTraitSaveSuccess(
+        isEditing: Boolean,
+        hasObservations: Boolean,
+    ) {
+        if (viewModel.shouldShowBrapiInfoAfterTraitSave(isEditing, hasObservations)) {
             showBrapiInfoDialog = true
         }
     }
@@ -394,7 +397,10 @@ fun TraitEditorScreen(
                     onDismiss = { showCreator = false },
                     onSuccess = {
                         showCreator = false
-                        handleTraitSaveSuccess()
+                        handleTraitSaveSuccess(
+                            isEditing = false,
+                            hasObservations = false,
+                        )
                     }
                 )
             }
@@ -408,9 +414,13 @@ fun TraitEditorScreen(
                         traitToEditHasObservations = false
                     },
                     onSuccess = {
+                        val hadObservations = traitToEditHasObservations
                         traitToEdit = null
                         traitToEditHasObservations = false
-                        handleTraitSaveSuccess()
+                        handleTraitSaveSuccess(
+                            isEditing = true,
+                            hasObservations = hadObservations,
+                        )
                     }
                 )
             }

@@ -10,6 +10,7 @@ import com.fieldbook.shared.database.repository.ObservationRepository
 import com.fieldbook.shared.database.repository.TraitRepository
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.dir_trait
+import com.fieldbook.shared.objects.ImportFormat
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.utilities.CSVUtil
 import com.fieldbook.shared.utilities.DocumentFile
@@ -178,13 +179,17 @@ class TraitEditorScreenViewModel(
         return observationRepository.hasObservationsForTrait(traitId)
     }
 
-    fun shouldShowBrapiInfoAfterTraitSave(): Boolean {
+    fun shouldShowBrapiInfoAfterTraitSave(
+        isEditing: Boolean,
+        hasObservations: Boolean,
+    ): Boolean {
+        if (!isEditing || !hasObservations) return false
+
         val fieldId = settings.getInt(GeneralKeys.SELECTED_FIELD_ID.key, -1)
         if (fieldId <= 0) return false
 
         val field = studyRepository.getById(fieldId)
-        return field.exp_name.isNotBlank() &&
-            field.exp_source.equals("brapi", ignoreCase = true)
+        return ImportFormat.fromString(field.import_format) == ImportFormat.BRAPI
     }
 
     fun refresh() {
