@@ -179,15 +179,19 @@ fun TraitCreatorDialog(
                 onDismissRequest = attemptDismiss,
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    val maxDialogHeight = maxHeight * 0.9f
+
                     Surface(
                         modifier = Modifier
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                            .heightIn(max = maxDialogHeight),
                         shape = RoundedCornerShape(12.dp),
                         tonalElevation = 4.dp
                     ) {
@@ -250,12 +254,10 @@ fun TraitCreatorDialog(
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 Row {
-                                    if (!isEditing || !observationsExist) {
-                                        TextButton(onClick = {
-                                            currentStep = TraitCreatorStep.ChooseFormat
-                                        }) {
-                                            Text(stringResource(Res.string.dialog_back))
-                                        }
+                                    TextButton(onClick = {
+                                        currentStep = TraitCreatorStep.ChooseFormat
+                                    }) {
+                                        Text(stringResource(Res.string.dialog_back))
                                     }
 
                                     TextButton(onClick = attemptDismiss) {
@@ -268,7 +270,7 @@ fun TraitCreatorDialog(
                                         } else {
                                             viewModel.insertTrait(traitState)
                                         }
-                                        onSuccess(traitState)
+                                        onSuccess(traitState.copy())
                                     }, enabled = traitName.isNotBlank() && paramError.isBlank()) {
                                         Text("Save")
                                     }
