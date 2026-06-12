@@ -64,11 +64,15 @@ fun CollectInput(
 
     val fontWeight = if (!isEdited) FontWeight.Bold else FontWeight.Normal
     val fontStyle = if (isEdited) FontStyle.Normal else FontStyle.Italic
-    val fontColor =
-        if (isEdited) AppColors.fb_color_text_dark.color else controller.getDisplayColor()
 
     val formatEnum = trait?.format?.let { formatStr ->
         Formats.entries.find { it.databaseName.equals(formatStr, ignoreCase = true) }
+    }
+    val isCounterPlaceholder = formatEnum == Formats.COUNTER && value.isEmpty()
+    val fontColor = when {
+        isEdited -> AppColors.fb_color_text_dark.color
+        isCounterPlaceholder -> AppColors.fb_color_text_dark.color
+        else -> controller.getDisplayColor()
     }
     val usesLazyVerticalInput =
         formatEnum == Formats.CATEGORICAL || formatEnum == Formats.MULTI_CATEGORICAL
@@ -135,6 +139,9 @@ fun CollectInput(
                 raw.equals("false", ignoreCase = true) -> "FALSE"
                 else -> ""
             }
+        }
+        Formats.COUNTER -> {
+            if (value.isEmpty()) "0" else value
         }
         else -> value
     }
