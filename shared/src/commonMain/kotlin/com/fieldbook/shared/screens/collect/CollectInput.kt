@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.preferences.PreferenceKeys
-import com.fieldbook.shared.screens.collect.traits.AngleTrait
 import com.fieldbook.shared.screens.collect.traits.BooleanTrait
 import com.fieldbook.shared.screens.collect.traits.CategoricalTrait
 import com.fieldbook.shared.screens.collect.traits.CounterTrait
@@ -420,7 +419,6 @@ fun TraitInputHost(
             )
         }
 
-        // Add more as needed, or use legacy string fallback for custom/unknown
         else -> when (normalizedTraitFormat.lowercase()) {
             "disease", "disease_rating", "disease rating", "rust rating" -> DiseaseRatingTrait(
                 value = value,
@@ -432,25 +430,10 @@ fun TraitInputHost(
                 modifier = modifier.fillMaxWidth().padding(8.dp)
             )
 
-           /* else -> NotImplementedTrait(
+            else -> NotImplementedTrait(
                 traitFormat = trait?.format ?: "unknown",
                 modifier = modifier.fillMaxWidth().padding(8.dp)
-            )*/
-
-            else -> {
-                EditableValueText(
-                    value = value,
-                    onValueChange = {
-                        controller.updateCurrentTraitValue(it)
-                        onEdited()
-                    },
-                    modifier = modifier.fillMaxWidth().padding(8.dp),
-                    isEdited = true,
-                    color = AppColors.fb_color_text_dark.color,
-                    defaultValue = trait?.defaultValue,
-                    closeKeyboardOnOpen = trait?.closeKeyboardOnOpen == true,
-                )
-            }
+            )
         }
     }
 }
