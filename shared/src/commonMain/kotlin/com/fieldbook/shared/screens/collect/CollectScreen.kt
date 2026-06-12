@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.ic_field
+import com.fieldbook.shared.generated.resources.ic_transfer_error
 import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTraitDisplayMode
@@ -210,38 +212,43 @@ fun CollectScreen(
 
 @Composable
 private fun CollectValidationSnackbar(data: SnackbarData) {
+    val shape = RoundedCornerShape(22.dp)
+
     Surface(
-        color = Color(0xCC2F2A33),
+        color = Color(0xFFFFF3F2),
         tonalElevation = 0.dp,
-        shadowElevation = 10.dp,
-        shape = MaterialTheme.shapes.large,
+        shadowElevation = 14.dp,
+        shape = shape,
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(MaterialTheme.shapes.large)
+            .clip(shape)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 16.dp)
         ) {
             Surface(
-                color = Color.White.copy(alpha = 0.14f),
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.size(28.dp)
+                color = Color(0xFFD94B4B),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.size(34.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        painter = painterResource(Res.drawable.ic_field),
+                        painter = painterResource(Res.drawable.ic_transfer_error),
                         contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(18.dp)
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(14.dp))
             Text(
                 text = data.visuals.message,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
+                color = Color(0xFF3A1F1F),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
             )
         }
     }
