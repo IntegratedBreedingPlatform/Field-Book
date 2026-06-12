@@ -113,7 +113,7 @@ fun AudioTrait(
     }
 
     LaunchedEffect(buttonState) {
-        controller.setCollectInteractionLocked(
+        controller.updateCollectInteractionLocked(
             buttonState == AudioButtonState.RECORDING || buttonState == AudioButtonState.PLAYING
         )
     }
@@ -121,7 +121,7 @@ fun AudioTrait(
     DisposableEffect(Unit) {
         onDispose {
             audioController.dispose()
-            controller.setCollectInteractionLocked(false)
+            controller.updateCollectInteractionLocked(false)
         }
     }
 
