@@ -43,10 +43,12 @@ import com.fieldbook.shared.generated.resources.ic_plus
 import com.fieldbook.shared.generated.resources.ic_transfer_cancelled
 import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.ic_trait_categorical
+import com.fieldbook.shared.generated.resources.trait_error_category_duplicate
 import com.fieldbook.shared.generated.resources.traits_format_categorical
 import com.fieldbook.shared.utilities.BrAPIScaleValidValuesCategories
 import com.fieldbook.shared.utilities.CategoryJsonUtil
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 class CategoricalFormat : TraitFormat(
     format = Formats.CATEGORICAL,
@@ -73,6 +75,7 @@ class CategoricalFormat : TraitFormat(
         var input by remember { mutableStateOf("") }
         var error by remember { mutableStateOf("") }
         val categoryListHeight = 288.dp
+        val duplicateCategoryMessage = stringResource(Res.string.trait_error_category_duplicate)
 
         Column(
             modifier = Modifier
@@ -123,11 +126,20 @@ class CategoricalFormat : TraitFormat(
                     onClick = {
                         val v = input.trim()
                         if (v.isNotEmpty()) {
-                            items.add(CategoryItem(id = nextId++, value = v))
-                            input = ""
-                            error = ""
-                            trait.categories = encode(items)
-                            onTraitChange(trait)
+                            val normalizedValue = v.lowercase()
+                            val alreadyExists = items.any { existing ->
+                                existing.value.trim().lowercase() == normalizedValue
+                            }
+
+                            if (alreadyExists) {
+                                error = duplicateCategoryMessage
+                            } else {
+                                items.add(CategoryItem(id = nextId++, value = v))
+                                input = ""
+                                error = ""
+                                trait.categories = encode(items)
+                                onTraitChange(trait)
+                            }
                         } else {
                             error = "Cannot add empty category"
                         }
