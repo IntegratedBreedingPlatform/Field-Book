@@ -119,12 +119,19 @@ INSERT INTO observation_variables(
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 getTraitByName:
-SELECT * FROM observation_variables WHERE observation_variable_name = ?;
+SELECT * FROM observation_variables WHERE observation_variable_name = ? COLLATE NOCASE;
 
 getTraitByNameAndPosition:
 SELECT * FROM observation_variables
 WHERE observation_variable_name = ? AND position = ?
 ORDER BY internal_id_observation_variable DESC
+LIMIT 1;
+
+getTraitByExternalDbIdAndSource:
+SELECT *
+FROM observation_variables
+WHERE external_db_id = ?
+  AND trait_data_source = ?
 LIMIT 1;
 
 getAttributeIdByName:
