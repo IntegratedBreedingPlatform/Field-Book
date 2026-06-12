@@ -323,7 +323,7 @@ class CollectScreenController {
         inputValidationMessage = message
     }
 
-    fun setCollectInteractionLocked(locked: Boolean) {
+    fun updateCollectInteractionLocked(locked: Boolean) {
         collectInteractionLocked = locked
     }
 
@@ -449,7 +449,7 @@ class CollectScreenController {
             val upperValue = maximum.toDoubleOrNull()
             if (parsedValue == null || upperValue == null || parsedValue > upperValue) {
                 return runBlocking {
-                    "${getString(Res.string.trait_error_maximum_value)}: $maximum"
+                    getString(Res.string.trait_error_maximum_value)
                 }
             }
         }
@@ -458,7 +458,7 @@ class CollectScreenController {
             val lowerValue = minimum.toDoubleOrNull()
             if (parsedValue == null || lowerValue == null || parsedValue < lowerValue) {
                 return runBlocking {
-                    "${getString(Res.string.trait_error_minimum_value)}: $minimum"
+                    getString(Res.string.trait_error_minimum_value)
                 }
             }
         }

@@ -435,6 +435,7 @@
     <!-- Validation -->
     <string name="trait_error_minimum_value">Value is less than allowed minimum</string>
     <string name="trait_error_maximum_value">Value is larger than allowed maximum</string>
+    <string name="trait_error_category_duplicate">This value has already been entered.</string>
     <string name="trait_error_disease_severity">Severity already stored</string>
     <string name="act_collect_study_names_empty">The selected study has empty unique, primary, or secondary names.</string>
 
@@ -1297,7 +1298,7 @@
     <!-- General -->
     <string name="device_offline_warning">Device Offline: Please connect to a network and try again</string>
     <string name="brapi_info_message">
-        Traits and fields imported via BrAPI will be able to export their observations via the BrAPI export.
+        Traits and fields imported via BrAPI will be able to export their observations via the BrAPI export.\n
         Traits and fields created manually or imported via CSV will need to be exported via CSV format.
     </string>
     <string name="brapi_na">NA</string>
