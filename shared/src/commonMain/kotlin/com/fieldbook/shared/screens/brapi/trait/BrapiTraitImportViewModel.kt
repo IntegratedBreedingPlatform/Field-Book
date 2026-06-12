@@ -31,6 +31,17 @@ class BrapiTraitImportViewModel(
     private val settings: Settings = Settings(),
 ) : ViewModel() {
 
+    private fun filterExistingTraits(traits: List<BrapiTraitDetails>): List<BrapiTraitDetails> {
+        val existingExternalIds = traitRepository.getAllTraitsWithAttributes()
+            .mapNotNull { it.externalDbId?.takeIf(String::isNotBlank) }
+            .toSet()
+
+        val filteredTraits = traits.filterNot { it.observationVariableDbId in existingExternalIds }
+        val availableIds = filteredTraits.mapTo(mutableSetOf()) { it.observationVariableDbId }
+        _selectedIds.update { selected -> selected.intersect(availableIds) }
+        return filteredTraits
+    }
+
     private val _brapiTraits = MutableStateFlow<List<BrapiTraitDetails>>(emptyList())
     val brapiTraits: StateFlow<List<BrapiTraitDetails>> = _brapiTraits.asStateFlow()
 
@@ -73,8 +84,10 @@ class BrapiTraitImportViewModel(
                 val sourceUrl = settings.getString(PreferenceKeys.BRAPI_BASE_URL, defaultBaseUrl)
 
                 if (!forceRefresh) {
-                    val cachedTraits = BrapiFilterCache.getStoredModels(sourceUrl).traits.values
-                        .sortedBy { it.observationVariableName.lowercase() }
+                    val cachedTraits = filterExistingTraits(
+                        BrapiFilterCache.getStoredModels(sourceUrl).traits.values
+                            .sortedBy { it.observationVariableName.lowercase() }
+                    )
                     if (cachedTraits.isNotEmpty()) {
                         _brapiTraits.value = cachedTraits
                         return@launch
@@ -86,8 +99,11 @@ class BrapiTraitImportViewModel(
                 when (val result = buildBrapiService(defaultBaseUrl).getTraits(pageSize = paginationManager.pageSize)) {
                     is BrapiResult.Success -> {
                         BrapiFilterCache.saveTraits(sourceUrl, result.value)
-                        _brapiTraits.value = result.value.sortedBy { it.observationVariableName.lowercase() }
-                        if (result.value.isEmpty()) {
+                        val availableTraits = filterExistingTraits(
+                            result.value.sortedBy { it.observationVariableName.lowercase() }
+                        )
+                        _brapiTraits.value = availableTraits
+                        if (availableTraits.isEmpty()) {
                             _messages.emit("No BrAPI traits were found.")
                         }
                     }
@@ -221,19 +237,23 @@ class BrapiTraitImportViewModel(
                     }
                 }.sortedBy { it.observationVariableName.lowercase() }
 
+                val availableTraits = filterExistingTraits(resolvedTraits)
+
                 if (fetchedStudyTraits.isNotEmpty()) {
                     BrapiFilterCache.saveStudyTraits(sourceUrl, fetchedStudyTraits)
                 }
-                if (resolvedTraits.isNotEmpty()) {
+                if (availableTraits.isNotEmpty()) {
                     _brapiTraits.update { current ->
-                        (current + resolvedTraits)
+                        filterExistingTraits(
+                            (current + availableTraits)
                             .distinctBy { it.observationVariableDbId }
                             .sortedBy { it.observationVariableName.lowercase() }
+                        )
                     }
                 }
-                _studyFilteredTraits.value = resolvedTraits
+                _studyFilteredTraits.value = availableTraits
 
-                if (failedStudyCount > 0 && resolvedTraits.isEmpty()) {
+                if (failedStudyCount > 0 && availableTraits.isEmpty()) {
                     _messages.emit("No traits were found for the selected BrAPI study filter.")
                 }
             } catch (e: Exception) {
@@ -264,7 +284,7 @@ class BrapiTraitImportViewModel(
             .flatMap { it.observationVariableDbIds }
             .toSet()
 
-        return traits
+        return filterExistingTraits(traits)
             .filter { trait ->
                 when {
                     hasStudyScopeFilters && filteredStudyTraitIds.isNotEmpty() ->
@@ -297,7 +317,6 @@ class BrapiTraitImportViewModel(
             try {
                 val source = settings.getString(PreferenceKeys.BRAPI_BASE_URL, defaultBaseUrl).hostForDisplay()
                 val existing = traitRepository.getAllTraitsWithAttributes()
-                val existingNames = existing.map { it.name }.toSet()
                 val existingByExternalId = existing
                     .filter {
                         !it.externalDbId.isNullOrBlank() &&
@@ -310,9 +329,12 @@ class BrapiTraitImportViewModel(
                 var skippedExistingName: String? = null
 
                 selectedTraits.forEach { brapiTrait ->
+                    val existingTraitByName = existing.firstOrNull {
+                        it.name.equals(brapiTrait.observationVariableName, ignoreCase = true)
+                    }
                     val currentByExternalId = existingByExternalId[brapiTrait.observationVariableDbId]
                     when {
-                        brapiTrait.observationVariableName in existingNames && currentByExternalId == null -> {
+                        existingTraitByName != null -> {
                             skippedExistingName = brapiTrait.observationVariableName
                         }
 
