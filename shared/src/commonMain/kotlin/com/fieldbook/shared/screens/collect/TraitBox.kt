@@ -35,8 +35,8 @@ fun TraitBox(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(
-                onClick = { viewModel.updateCurrentTraitIndex(viewModel.currentTraitIndex - 1) },
-                enabled = !viewModel.collectInteractionLocked && viewModel.currentTraitIndex > 0,
+                onClick = { viewModel.goToPreviousTrait() },
+                enabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -53,8 +53,8 @@ fun TraitBox(
                 modifier = Modifier.align(Alignment.CenterVertically)
             )
             IconButton(
-                onClick = { viewModel.updateCurrentTraitIndex(viewModel.currentTraitIndex + 1) },
-                enabled = !viewModel.collectInteractionLocked && viewModel.currentTraitIndex < viewModel.traits.size - 1,
+                onClick = { viewModel.goToNextTrait() },
+                enabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
