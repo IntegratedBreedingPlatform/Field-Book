@@ -135,6 +135,18 @@ class CollectScreenController {
         return false
     }
 
+    fun goToNextUnit(): Boolean {
+        if (units.isEmpty()) return false
+        val nextIndex = if (currentUnitIndex >= units.lastIndex) 0 else currentUnitIndex + 1
+        return updateCurrentUnitIndex(nextIndex)
+    }
+
+    fun goToPreviousUnit(): Boolean {
+        if (units.isEmpty()) return false
+        val previousIndex = if (currentUnitIndex <= 0) units.lastIndex else currentUnitIndex - 1
+        return updateCurrentUnitIndex(previousIndex)
+    }
+
     fun updateCurrentTraitIndex(index: Int): Boolean {
         if (index in traits.indices && validateCurrentTraitValue()) {
             currentTraitIndex = index
@@ -142,6 +154,18 @@ class CollectScreenController {
             return true
         }
         return false
+    }
+
+    fun goToNextTrait(): Boolean {
+        if (traits.isEmpty()) return false
+        val nextIndex = if (currentTraitIndex >= traits.lastIndex) 0 else currentTraitIndex + 1
+        return updateCurrentTraitIndex(nextIndex)
+    }
+
+    fun goToPreviousTrait(): Boolean {
+        if (traits.isEmpty()) return false
+        val previousIndex = if (currentTraitIndex <= 0) traits.lastIndex else currentTraitIndex - 1
+        return updateCurrentTraitIndex(previousIndex)
     }
 
     fun applyDataGridSelection(selection: DataGridSelection): Boolean {
