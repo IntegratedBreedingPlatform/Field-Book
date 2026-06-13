@@ -40,7 +40,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.ic_field
+import com.fieldbook.shared.generated.resources.ic_lock_clock
+import com.fieldbook.shared.generated.resources.ic_tb_lock
 import com.fieldbook.shared.generated.resources.ic_transfer_error
+import com.fieldbook.shared.generated.resources.ic_tb_unlock
 import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTraitDisplayMode
@@ -156,6 +159,19 @@ fun CollectScreen(
                                 contentDescription = "Data Grid"
                             )
                         }
+                    }
+                    IconButton(
+                        onClick = { controller.cycleDataLockState() }
+                    ) {
+                        val lockIcon = when (controller.dataLockState) {
+                            CollectDataLockState.UNLOCKED -> Res.drawable.ic_tb_unlock
+                            CollectDataLockState.LOCKED -> Res.drawable.ic_tb_lock
+                            CollectDataLockState.FROZEN -> Res.drawable.ic_lock_clock
+                        }
+                        Icon(
+                            painter = painterResource(lockIcon),
+                            contentDescription = "Data lock"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

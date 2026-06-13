@@ -13,8 +13,11 @@ import com.fieldbook.shared.database.repository.ObservationUnitRepository
 import com.fieldbook.shared.database.repository.StudyRepository
 import com.fieldbook.shared.database.repository.TraitRepository
 import com.fieldbook.shared.generated.resources.Res
+import com.fieldbook.shared.generated.resources.activity_collect_frozen_state
+import com.fieldbook.shared.generated.resources.activity_collect_locked_state
 import com.fieldbook.shared.generated.resources.trait_error_maximum_value
 import com.fieldbook.shared.generated.resources.trait_error_minimum_value
+import com.fieldbook.shared.generated.resources.activity_collect_unlocked_state
 import com.fieldbook.shared.objects.RangeObject
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.screens.datagrid.DataGridSelection
@@ -24,6 +27,17 @@ import com.russhwolf.settings.Settings
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
+enum class CollectDataLockState(val persistedValue: Int) {
+    UNLOCKED(0),
+    LOCKED(1),
+    FROZEN(2);
+
+    companion object {
+        fun fromPersistedValue(value: Int): CollectDataLockState {
+            return entries.firstOrNull { it.persistedValue == value } ?: UNLOCKED
+        }
+    }
+}
 
 // TODO refactor to use ViewModel() ?
 class CollectScreenController {
@@ -70,7 +84,14 @@ class CollectScreenController {
         private set
     var collectInteractionLocked by mutableStateOf(false)
         private set
+    var dataLockState by mutableStateOf(
+        CollectDataLockState.fromPersistedValue(
+            settings.getInt(GeneralKeys.DATA_LOCK_STATE.key, CollectDataLockState.UNLOCKED.persistedValue)
+        )
+    )
+        private set
     private val suppressedDefaultEntries = mutableSetOf<String>()
+    private var currentObservationHadInitialValue by mutableStateOf(false)
 
     val primaryId = settings.getString(GeneralKeys.PRIMARY_NAME.key, "")
     val secondaryId = settings.getString(GeneralKeys.SECONDARY_NAME.key, "")
@@ -130,6 +151,7 @@ class CollectScreenController {
             rangeID.getOrNull(index)?.let(::updateCurrentRange)
             persistCurrentSelection()
             loadTraitValues()
+            refreshCurrentObservationLockState()
             return true
         }
         return false
@@ -151,6 +173,7 @@ class CollectScreenController {
         if (index in traits.indices && validateCurrentTraitValue()) {
             currentTraitIndex = index
             persistCurrentSelection()
+            refreshCurrentObservationLockState()
             return true
         }
         return false
@@ -194,12 +217,17 @@ class CollectScreenController {
             traitValuesLoading = false
             lastUnitId = plotId
         }
+        refreshCurrentObservationLockState()
     }
 
     /**
      * Update the observation for the current trait and unit, and persist to DB.
      */
     fun updateCurrentTraitValue(value: String) {
+        if (!canMutateCurrentObservation()) {
+            showCurrentDataLockMessage()
+            return
+        }
         val trait = traits.getOrNull(currentTraitIndex)
         val unit = units.getOrNull(currentUnitIndex)
         val plotId = unit?.observation_unit_db_id
@@ -225,6 +253,10 @@ class CollectScreenController {
     }
 
     fun updateCurrentUnitGeoCoordinates(geoCoordinates: String) {
+        if (!canMutateCurrentObservation()) {
+            showCurrentDataLockMessage()
+            return
+        }
         val unit = units.getOrNull(currentUnitIndex)
         val unitDbId = unit?.observation_unit_db_id ?: return
 
@@ -280,6 +312,10 @@ class CollectScreenController {
      * Add a new observation for the current trait and unit, and persist to DB.
      */
     fun addCurrentTraitValue(value: String) {
+        if (!canMutateCurrentObservation()) {
+            showCurrentDataLockMessage()
+            return
+        }
         val trait = traits.getOrNull(currentTraitIndex)
         val unit = units.getOrNull(currentUnitIndex)
         val plotId = unit?.observation_unit_db_id
@@ -302,6 +338,10 @@ class CollectScreenController {
      * Remove one stored value for the current trait and unit.
      */
     fun deleteCurrentTraitValue(value: String) {
+        if (!canMutateCurrentObservation()) {
+            showCurrentDataLockMessage()
+            return
+        }
         val trait = traits.getOrNull(currentTraitIndex)
         val unit = units.getOrNull(currentUnitIndex)
         val plotId = unit?.observation_unit_db_id
@@ -351,7 +391,41 @@ class CollectScreenController {
         collectInteractionLocked = locked
     }
 
+    fun cycleDataLockState() {
+        dataLockState = when (dataLockState) {
+            CollectDataLockState.UNLOCKED -> CollectDataLockState.LOCKED
+            CollectDataLockState.LOCKED -> CollectDataLockState.FROZEN
+            CollectDataLockState.FROZEN -> CollectDataLockState.UNLOCKED
+        }
+        settings.putInt(GeneralKeys.DATA_LOCK_STATE.key, dataLockState.persistedValue)
+        showCurrentDataLockMessage()
+    }
+
+    fun isCurrentObservationLocked(): Boolean {
+        return when (dataLockState) {
+            CollectDataLockState.UNLOCKED -> false
+            CollectDataLockState.LOCKED -> true
+            CollectDataLockState.FROZEN -> currentObservationHadInitialValue
+        }
+    }
+
+    fun canMutateCurrentObservation(): Boolean = !isCurrentObservationLocked()
+
+    fun showCurrentDataLockMessage() {
+        inputValidationMessage = runBlocking {
+            when (dataLockState) {
+                CollectDataLockState.UNLOCKED -> getString(Res.string.activity_collect_unlocked_state)
+                CollectDataLockState.LOCKED -> getString(Res.string.activity_collect_locked_state)
+                CollectDataLockState.FROZEN -> getString(Res.string.activity_collect_frozen_state)
+            }
+        }
+    }
+
     fun clearCurrentTraitValue() {
+        if (!canMutateCurrentObservation()) {
+            showCurrentDataLockMessage()
+            return
+        }
         val trait = traits.getOrNull(currentTraitIndex)
         val unit = units.getOrNull(currentUnitIndex)
         val plotId = unit?.observation_unit_db_id
@@ -369,6 +443,7 @@ class CollectScreenController {
             traitValues = traitValues.toMutableMap().apply {
                 remove(traitId)
             }
+            refreshCurrentObservationLockState()
         }
     }
 
@@ -425,6 +500,13 @@ class CollectScreenController {
 
         val restoredIndex = traits.indexOfFirst { it.id?.toString() == lastTraitId }
         currentTraitIndex = if (restoredIndex >= 0) restoredIndex else 0
+        refreshCurrentObservationLockState()
+    }
+
+    private fun refreshCurrentObservationLockState() {
+        val traitId = traits.getOrNull(currentTraitIndex)?.id
+        val currentValue = traitId?.let { traitValues[it]?.firstOrNull() }.orEmpty()
+        currentObservationHadInitialValue = currentValue.isNotEmpty()
     }
 
     private fun currentRangeUniqueId(): String? {
