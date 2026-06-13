@@ -1,6 +1,7 @@
 package com.fieldbook.shared.screens.collect
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,7 @@ fun CollectInput(
     }
     val usesLazyVerticalInput =
         formatEnum == Formats.CATEGORICAL || formatEnum == Formats.MULTI_CATEGORICAL
+    val isCurrentObservationLocked = controller.isCurrentObservationLocked()
     val labelValPref = remember { Settings() }
         .getString(PreferenceKeys.LABELVAL_CUSTOMIZE, "value")
     val showLabel = labelValPref == "label"
@@ -157,56 +159,85 @@ fun CollectInput(
         Spacer(Modifier.height(16.dp))
 
         if (formatEnum == Formats.TEXT) {
-            key(currentPlotId, currentTraitId) {
-                EditableValueText(
-                    value = value,
-                    onValueChange = {
-                        controller.updateCurrentTraitValue(it)
-                        isEdited = true
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    isEdited = isEdited,
-                    color = fontColor,
-                    defaultValue = trait?.defaultValue,
-                    closeKeyboardOnOpen = trait?.closeKeyboardOnOpen == true,
-                )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                key(currentPlotId, currentTraitId) {
+                    EditableValueText(
+                        value = value,
+                        onValueChange = {
+                            controller.updateCurrentTraitValue(it)
+                            isEdited = true
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        isEdited = isEdited,
+                        color = fontColor,
+                        defaultValue = trait?.defaultValue,
+                        closeKeyboardOnOpen = trait?.closeKeyboardOnOpen == true,
+                        enabled = !isCurrentObservationLocked,
+                    )
+                }
+                if (isCurrentObservationLocked) {
+                    LockedInputOverlay(
+                        modifier = Modifier.matchParentSize(),
+                        onClick = controller::showCurrentDataLockMessage
+                    )
+                }
             }
         } else if (formatEnum?.isCamera == true) {
-            TraitInputContainer(
-                usesLazyVerticalInput = false,
-                scrollable = false,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                key(currentPlotId, currentTraitId) {
-                    TraitInputHost(
-                        controller = controller,
-                        trait = trait,
-                        values = values,
-                        onEdited = { isEdited = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        onExpandPhotoTrait = onExpandPhotoTrait
+                TraitInputContainer(
+                    usesLazyVerticalInput = false,
+                    scrollable = false,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    key(currentPlotId, currentTraitId) {
+                        TraitInputHost(
+                            controller = controller,
+                            trait = trait,
+                            values = values,
+                            onEdited = { isEdited = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            onExpandPhotoTrait = onExpandPhotoTrait
+                        )
+                    }
+                }
+                if (isCurrentObservationLocked) {
+                    LockedInputOverlay(
+                        modifier = Modifier.matchParentSize(),
+                        onClick = controller::showCurrentDataLockMessage
                     )
                 }
             }
         } else if (formatEnum == Formats.AUDIO) {
-            TraitInputContainer(
-                usesLazyVerticalInput = false,
-                scrollable = false,
-                centerContent = false,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                key(currentPlotId, currentTraitId) {
-                    TraitInputHost(
-                        controller = controller,
-                        trait = trait,
-                        values = values,
-                        onEdited = { isEdited = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        onExpandPhotoTrait = onExpandPhotoTrait
+                TraitInputContainer(
+                    usesLazyVerticalInput = false,
+                    scrollable = false,
+                    centerContent = false,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    key(currentPlotId, currentTraitId) {
+                        TraitInputHost(
+                            controller = controller,
+                            trait = trait,
+                            values = values,
+                            onEdited = { isEdited = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            onExpandPhotoTrait = onExpandPhotoTrait
+                        )
+                    }
+                }
+                if (isCurrentObservationLocked) {
+                    LockedInputOverlay(
+                        modifier = Modifier.matchParentSize(),
+                        onClick = controller::showCurrentDataLockMessage
                     )
                 }
             }
@@ -226,20 +257,30 @@ fun CollectInput(
                     .padding(8.dp)
                     .background(androidx.compose.material3.MaterialTheme.colorScheme.primary)
             )
-            TraitInputContainer(
-                usesLazyVerticalInput = usesLazyVerticalInput,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                key(currentPlotId, currentTraitId) {
-                    TraitInputHost(
-                        controller = controller,
-                        trait = trait,
-                        values = values,
-                        onEdited = { isEdited = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        onExpandPhotoTrait = onExpandPhotoTrait
+                TraitInputContainer(
+                    usesLazyVerticalInput = usesLazyVerticalInput,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    key(currentPlotId, currentTraitId) {
+                        TraitInputHost(
+                            controller = controller,
+                            trait = trait,
+                            values = values,
+                            onEdited = { isEdited = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            onExpandPhotoTrait = onExpandPhotoTrait
+                        )
+                    }
+                }
+                if (isCurrentObservationLocked) {
+                    LockedInputOverlay(
+                        modifier = Modifier.matchParentSize(),
+                        onClick = controller::showCurrentDataLockMessage
                     )
                 }
             }
@@ -454,6 +495,7 @@ fun EditableValueText(
     color: androidx.compose.ui.graphics.Color = AppColors.fb_color_text_dark.color,
     defaultValue: String? = null,
     closeKeyboardOnOpen: Boolean = false,
+    enabled: Boolean = true,
 ) {
     TextTrait(
         value = value,
@@ -463,6 +505,7 @@ fun EditableValueText(
         isEdited = isEdited,
         editedColor = color,
         closeKeyboardOnOpen = closeKeyboardOnOpen,
+        enabled = enabled,
     )
     Box(
         modifier = Modifier
@@ -470,6 +513,18 @@ fun EditableValueText(
             .height(18.dp)
             .padding(8.dp)
             .background(androidx.compose.material3.MaterialTheme.colorScheme.primary)
+    )
+}
+
+@Composable
+private fun LockedInputOverlay(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .background(androidx.compose.ui.graphics.Color.Transparent)
+            .clickable(onClick = onClick)
     )
 }
 

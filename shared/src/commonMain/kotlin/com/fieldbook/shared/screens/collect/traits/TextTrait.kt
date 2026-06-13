@@ -34,6 +34,7 @@ fun TextTrait(
     isEdited: Boolean = false,
     editedColor: Color = Color.Unspecified,
     closeKeyboardOnOpen: Boolean = false,
+    enabled: Boolean = true,
 ) {
     var local by remember {
         mutableStateOf(
@@ -56,7 +57,7 @@ fun TextTrait(
     }
 
     LaunchedEffect(closeKeyboardOnOpen) {
-        if (closeKeyboardOnOpen) {
+        if (!enabled || closeKeyboardOnOpen) {
             keyboardController?.hide()
         } else {
             focusRequester.requestFocus()
@@ -70,6 +71,7 @@ fun TextTrait(
             local = v.copy(selection = TextRange(v.text.length))
             onValueChange(v.text)
         },
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
