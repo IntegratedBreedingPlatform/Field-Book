@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,15 +36,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.ic_field
 import com.fieldbook.shared.generated.resources.ic_lock_clock
+import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.ic_tb_lock
 import com.fieldbook.shared.generated.resources.ic_transfer_error
 import com.fieldbook.shared.generated.resources.ic_tb_unlock
+import com.fieldbook.shared.generated.resources.act_collect_delete_value_button_content_description
 import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTraitDisplayMode
@@ -51,6 +57,7 @@ import com.fieldbook.shared.screens.datagrid.DataGridScreen
 import com.fieldbook.shared.traits.Formats
 import com.russhwolf.settings.Settings
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * KMP version of CollectActivity main screen logic.
@@ -87,6 +94,7 @@ fun CollectScreen(
         Formats.entries.find { it.databaseName.equals(formatStr, ignoreCase = true) }
     }
     val isCurrentTraitCamera = currentFormat?.isCamera == true
+    val canDeleteCurrentValue = controller.hasCurrentTraitValue() && !controller.isCurrentObservationLocked()
 
     LaunchedEffect(controller.inputValidationMessage) {
         controller.inputValidationMessage?.let { message ->
@@ -181,6 +189,14 @@ fun CollectScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
+        },
+        bottomBar = {
+            CollectBottomBar(
+                canSetNa = !controller.isCurrentObservationLocked(),
+                canDeleteCurrentValue = canDeleteCurrentValue,
+                onSetNa = { controller.updateCurrentTraitValue("NA") },
+                onDelete = controller::clearCurrentTraitValue
+            )
         }
     ) { innerPadding ->
         Surface(
@@ -222,6 +238,78 @@ fun CollectScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CollectBottomBar(
+    canSetNa: Boolean,
+    canDeleteCurrentValue: Boolean,
+    onSetNa: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "NA",
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.alpha(0f)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(enabled = canSetNa, onClick = onSetNa),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "NA",
+                    color = if (canSetNa) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                IconButton(
+                    onClick = onDelete,
+                    enabled = canDeleteCurrentValue,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_tb_delete),
+                        contentDescription = stringResource(Res.string.act_collect_delete_value_button_content_description),
+                        tint = if (canDeleteCurrentValue) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                        }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
