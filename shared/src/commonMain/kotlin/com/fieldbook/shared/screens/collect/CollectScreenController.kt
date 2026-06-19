@@ -411,6 +411,11 @@ class CollectScreenController {
 
     fun canMutateCurrentObservation(): Boolean = !isCurrentObservationLocked()
 
+    fun hasCurrentTraitValue(): Boolean {
+        val traitId = traits.getOrNull(currentTraitIndex)?.id ?: return false
+        return traitValues[traitId]?.firstOrNull().isNullOrBlank().not()
+    }
+
     fun showCurrentDataLockMessage() {
         inputValidationMessage = runBlocking {
             when (dataLockState) {
