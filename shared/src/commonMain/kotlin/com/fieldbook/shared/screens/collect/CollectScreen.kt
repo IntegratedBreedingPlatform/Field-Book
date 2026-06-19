@@ -43,18 +43,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
+import com.fieldbook.shared.generated.resources.act_collect_barcode_button_content_description
 import com.fieldbook.shared.generated.resources.ic_field
 import com.fieldbook.shared.generated.resources.ic_lock_clock
+import com.fieldbook.shared.generated.resources.ic_tb_barcode
 import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.ic_tb_lock
 import com.fieldbook.shared.generated.resources.ic_transfer_error
 import com.fieldbook.shared.generated.resources.ic_tb_unlock
 import com.fieldbook.shared.generated.resources.act_collect_delete_value_button_content_description
 import com.fieldbook.shared.preferences.PreferenceKeys
+import com.fieldbook.shared.screens.ScannerScreen
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTraitDisplayMode
 import com.fieldbook.shared.screens.datagrid.DataGridScreen
 import com.fieldbook.shared.traits.Formats
+import com.fieldbook.shared.traits.Scannable
 import com.russhwolf.settings.Settings
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -71,6 +75,7 @@ fun CollectScreen(
     onBack: (() -> Unit)? = null,
 ) {
     var isCameraFullscreen by remember { mutableStateOf(false) }
+    var isBarcodeScannerFullscreen by remember { mutableStateOf(false) }
     var showDataGrid by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val settings = remember { Settings() }
@@ -117,6 +122,25 @@ fun CollectScreen(
                 controller = controller,
                 displayMode = PhotoTraitDisplayMode.FULLSCREEN,
                 onCollapseRequest = { isCameraFullscreen = false }
+            )
+        }
+        return
+    }
+
+    if (isBarcodeScannerFullscreen) {
+        Surface(modifier = modifier.fillMaxSize()) {
+            ScannerScreen(
+                onBack = { isBarcodeScannerFullscreen = false },
+                onResult = { scannedValue ->
+                    val traitFormat = currentTrait?.format
+                        ?.let { Formats.findTrait(it) }
+                    val valueToStore = when (traitFormat) {
+                        is Scannable -> traitFormat.preprocess(scannedValue)
+                        else -> scannedValue
+                    }
+                    controller.updateCurrentTraitValue(valueToStore)
+                    isBarcodeScannerFullscreen = false
+                }
             )
         }
         return
@@ -192,8 +216,10 @@ fun CollectScreen(
         },
         bottomBar = {
             CollectBottomBar(
+                canScanBarcode = !controller.isCurrentObservationLocked(),
                 canSetNa = !controller.isCurrentObservationLocked(),
                 canDeleteCurrentValue = canDeleteCurrentValue,
+                onScanBarcode = { isBarcodeScannerFullscreen = true },
                 onSetNa = { controller.updateCurrentTraitValue("NA") },
                 onDelete = controller::clearCurrentTraitValue
             )
@@ -244,8 +270,10 @@ fun CollectScreen(
 
 @Composable
 private fun CollectBottomBar(
+    canScanBarcode: Boolean,
     canSetNa: Boolean,
     canDeleteCurrentValue: Boolean,
+    onScanBarcode: () -> Unit,
     onSetNa: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -258,18 +286,24 @@ private fun CollectBottomBar(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(modifier = Modifier.weight(1f))
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "NA",
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.alpha(0f)
-                )
+                IconButton(
+                    onClick = onScanBarcode,
+                    enabled = canScanBarcode,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_tb_barcode),
+                        contentDescription = stringResource(Res.string.act_collect_barcode_button_content_description),
+                        tint = if (canScanBarcode) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                        }
+                    )
+                }
             }
             Box(
                 modifier = Modifier
@@ -287,7 +321,8 @@ private fun CollectBottomBar(
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.alpha(if (canSetNa) 1f else 0.38f)
                 )
             }
             Box(
@@ -309,7 +344,6 @@ private fun CollectBottomBar(
                     )
                 }
             }
-            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
