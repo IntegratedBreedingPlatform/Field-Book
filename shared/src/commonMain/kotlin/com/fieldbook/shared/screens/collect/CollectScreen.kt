@@ -5,14 +5,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,6 +30,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -42,16 +48,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.act_collect_barcode_button_content_description
 import com.fieldbook.shared.generated.resources.ic_field
 import com.fieldbook.shared.generated.resources.ic_lock_clock
 import com.fieldbook.shared.generated.resources.ic_tb_barcode
 import com.fieldbook.shared.generated.resources.ic_tb_delete
+import com.fieldbook.shared.generated.resources.ic_tb_details
 import com.fieldbook.shared.generated.resources.ic_tb_lock
 import com.fieldbook.shared.generated.resources.ic_transfer_error
 import com.fieldbook.shared.generated.resources.ic_tb_unlock
 import com.fieldbook.shared.generated.resources.act_collect_delete_value_button_content_description
+import com.fieldbook.shared.generated.resources.fragment_summary_toolbar_title
+import com.fieldbook.shared.generated.resources.fragment_summary_filter_title
+import com.fieldbook.shared.generated.resources.fragment_summary_next_button_text
+import com.fieldbook.shared.generated.resources.fragment_summary_prev_button_text
+import com.fieldbook.shared.generated.resources.dialog_fragment_summary_neutral_button
+import com.fieldbook.shared.generated.resources.chevron_left
+import com.fieldbook.shared.generated.resources.chevron_right
+import com.fieldbook.shared.generated.resources.menu_fragment_summary_filter_title
+import com.fieldbook.shared.generated.resources.pencil
+import com.fieldbook.shared.generated.resources.preferences_appearance_toolbar_customize_summary
+import com.fieldbook.shared.database.repository.ObservationUnitAttributeRepository
+import com.fieldbook.shared.database.repository.ObservationUnitPropertyRepository
+import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.screens.ScannerScreen
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
@@ -59,6 +81,7 @@ import com.fieldbook.shared.screens.collect.traits.PhotoTraitDisplayMode
 import com.fieldbook.shared.screens.datagrid.DataGridScreen
 import com.fieldbook.shared.traits.Formats
 import com.fieldbook.shared.traits.Scannable
+import com.fieldbook.shared.utilities.CategoryJsonUtil
 import com.russhwolf.settings.Settings
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -76,6 +99,7 @@ fun CollectScreen(
 ) {
     var isCameraFullscreen by remember { mutableStateOf(false) }
     var isBarcodeScannerFullscreen by remember { mutableStateOf(false) }
+    var showSummaryDialog by remember { mutableStateOf(false) }
     var showDataGrid by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val settings = remember { Settings() }
@@ -100,6 +124,57 @@ fun CollectScreen(
     }
     val isCurrentTraitCamera = currentFormat?.isCamera == true
     val canDeleteCurrentValue = controller.hasCurrentTraitValue() && !controller.isCurrentObservationLocked()
+    var summaryFilter by remember(controller.studyId) {
+        mutableStateOf(loadCollectSummaryFilter(settings, controller.studyId))
+    }
+    val observationUnitPropertyRepository = remember { ObservationUnitPropertyRepository() }
+    val summaryAttributeLabels = remember(controller.studyId) {
+        ObservationUnitAttributeRepository().getAllNames(controller.studyId.toLong())
+    }
+    val summaryAttributeValues = remember(
+        controller.currentUnitIndex,
+        controller.units,
+        summaryAttributeLabels,
+        controller.uniqueId
+    ) {
+        val unit = controller.units.getOrNull(controller.currentUnitIndex)
+        if (unit == null) {
+            emptyMap()
+        } else {
+            observationUnitPropertyRepository.getAttributeValuesForUnit(
+                uniqueName = controller.uniqueId,
+                unitId = unit.observation_unit_db_id,
+                attributeLabels = summaryAttributeLabels
+            )
+        }
+    }
+    val summaryDefinitions = remember(
+        summaryAttributeLabels,
+        controller.currentUnitIndex,
+        controller.units,
+        controller.traits
+    ) {
+        buildCollectSummaryDefinitions(
+            attributeLabels = summaryAttributeLabels,
+            controller = controller
+        )
+    }
+    val summaryItems = remember(
+        summaryAttributeLabels,
+        controller.currentUnitIndex,
+        controller.units,
+        controller.traits,
+        controller.traitValues,
+        summaryFilter
+    ) {
+        buildCollectSummaryItems(
+            controller = controller,
+            attributeLabels = summaryAttributeLabels,
+            attributeValues = summaryAttributeValues,
+            showCategoryLabels = settings.getString(PreferenceKeys.LABELVAL_CUSTOMIZE, "value") != "value",
+            filter = summaryFilter
+        )
+    }
 
     LaunchedEffect(controller.inputValidationMessage) {
         controller.inputValidationMessage?.let { message ->
@@ -193,6 +268,15 @@ fun CollectScreen(
                         }
                     }
                     IconButton(
+                        onClick = { showSummaryDialog = true },
+                        enabled = !controller.collectInteractionLocked
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_tb_details),
+                            contentDescription = stringResource(Res.string.preferences_appearance_toolbar_customize_summary)
+                        )
+                    }
+                    IconButton(
                         onClick = { controller.cycleDataLockState() }
                     ) {
                         val lockIcon = when (controller.dataLockState) {
@@ -266,6 +350,469 @@ fun CollectScreen(
             }
         }
     }
+
+    if (showSummaryDialog) {
+        CollectSummaryDialog(
+            title = stringResource(Res.string.fragment_summary_toolbar_title),
+            items = summaryItems,
+            canNavigatePrevious = controller.units.isNotEmpty(),
+            canNavigateNext = controller.units.isNotEmpty(),
+            onFilterUpdated = { filter ->
+                summaryFilter = filter
+                persistCollectSummaryFilter(settings, controller.studyId, filter)
+            },
+            filterOptions = summaryDefinitions,
+            initialFilter = summaryFilter,
+            onTraitSelected = { traitId ->
+                val traitIndex = controller.traits.indexOfFirst { it.id == traitId }
+                if (traitIndex >= 0) {
+                    controller.updateCurrentTraitIndex(traitIndex)
+                }
+                showSummaryDialog = false
+            },
+            onPrevious = { controller.goToPreviousUnit() },
+            onNext = { controller.goToNextUnit() },
+            onDismiss = { showSummaryDialog = false }
+        )
+    }
+}
+
+private data class CollectSummaryDefinition(
+    val label: String,
+    val traitId: Long? = null,
+)
+
+private data class CollectSummaryItem(
+    val label: String,
+    val value: String,
+    val traitId: Long? = null,
+)
+
+private data class CollectSummaryFilter(
+    val attributeLabels: Set<String>? = null,
+    val traitIds: Set<Long>? = null,
+)
+
+private fun buildCollectSummaryDefinitions(
+    attributeLabels: List<String>,
+    controller: CollectScreenController,
+): List<CollectSummaryDefinition> {
+    if (controller.units.isEmpty()) return emptyList()
+
+    val traitDefinitions = controller.traits.mapNotNull { trait ->
+        val traitId = trait.id ?: return@mapNotNull null
+        CollectSummaryDefinition(label = trait.name, traitId = traitId)
+    }.sortedBy { it.label }
+
+    val attributeDefinitions = attributeLabels
+        .map { CollectSummaryDefinition(label = it) }
+        .sortedBy { it.label }
+
+    return attributeDefinitions + traitDefinitions
+}
+
+private fun buildCollectSummaryItems(
+    controller: CollectScreenController,
+    attributeLabels: List<String>,
+    attributeValues: Map<String, String>,
+    showCategoryLabels: Boolean,
+    filter: CollectSummaryFilter,
+): List<CollectSummaryItem> {
+    if (controller.units.getOrNull(controller.currentUnitIndex) == null) return emptyList()
+
+    val visibleAttributeLabels = filter.attributeLabels
+
+    val attributeItems = attributeLabels
+        .map { label ->
+            CollectSummaryItem(
+                label = label,
+                value = resolveSummaryAttributeValue(controller, label, attributeValues).ifBlank { "" }
+            )
+        }
+        .filter { visibleAttributeLabels == null || it.label in visibleAttributeLabels }
+        .sortedBy { it.label }
+
+    val visibleTraitIds = filter.traitIds
+
+    val traitItems = controller.traits.mapNotNull { trait ->
+        val traitId = trait.id ?: return@mapNotNull null
+        if (visibleTraitIds != null && traitId !in visibleTraitIds) return@mapNotNull null
+        val rawValue = controller.traitValues[traitId]?.joinToString("\n").orEmpty()
+
+        val displayValue = when (trait.format?.lowercase()) {
+            Formats.CATEGORICAL.databaseName,
+            Formats.MULTI_CATEGORICAL.databaseName -> {
+                try {
+                    CategoryJsonUtil.flattenMultiCategoryValue(
+                        CategoryJsonUtil.decode(rawValue),
+                        showLabel = showCategoryLabels
+                    ).ifBlank { rawValue }
+                } catch (_: Exception) {
+                    rawValue
+                }
+            }
+
+            else -> rawValue
+        }
+
+        CollectSummaryItem(
+            label = trait.name,
+            value = displayValue.ifBlank { "-" },
+            traitId = traitId
+        )
+    }.sortedBy { it.label }
+
+    return attributeItems + traitItems
+}
+
+private fun resolveSummaryAttributeValue(
+    controller: CollectScreenController,
+    label: String,
+    attributeValues: Map<String, String>,
+): String {
+    attributeValues[label]?.let { return it }
+
+    return when (label) {
+        controller.uniqueId -> controller.cRange.uniqueId
+        controller.primaryId -> controller.cRange.primaryId
+        controller.secondaryId -> controller.cRange.secondaryId
+        else -> ""
+    }
+}
+
+@Composable
+private fun CollectSummaryDialog(
+    title: String,
+    items: List<CollectSummaryItem>,
+    filterOptions: List<CollectSummaryDefinition>,
+    initialFilter: CollectSummaryFilter,
+    canNavigatePrevious: Boolean,
+    canNavigateNext: Boolean,
+    onFilterUpdated: (CollectSummaryFilter) -> Unit,
+    onTraitSelected: (Long) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var showFilterDialog by remember(initialFilter, filterOptions) { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(18.dp),
+            tonalElevation = 6.dp,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = null
+                        )
+                    }
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { showFilterDialog = true }) {
+                        Icon(
+                            painter = painterResource(Res.drawable.pencil),
+                            contentDescription = stringResource(Res.string.menu_fragment_summary_filter_title)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (items.isEmpty()) {
+                    Text(text = "-")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                    ) {
+                        items(items) { item ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable(
+                                        enabled = item.traitId != null,
+                                        onClick = { item.traitId?.let(onTraitSelected) }
+                                    ),
+                                shape = RoundedCornerShape(12.dp),
+                                tonalElevation = 1.dp,
+                                shadowElevation = 0.dp,
+                                border = if (item.traitId != null) {
+                                    androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                    )
+                                } else {
+                                    androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = item.label,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = item.value,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = if (item.traitId != null) FontWeight.SemiBold else FontWeight.Medium,
+                                            color = if (item.traitId != null) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            }
+                                        )
+                                    }
+                                    if (item.traitId != null) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.chevron_right),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onPrevious,
+                        enabled = canNavigatePrevious,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.chevron_left),
+                            contentDescription = stringResource(Res.string.fragment_summary_prev_button_text)
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        onClick = onNext,
+                        enabled = canNavigateNext,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.chevron_right),
+                            contentDescription = stringResource(Res.string.fragment_summary_next_button_text)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showFilterDialog) {
+        CollectSummaryFilterDialog(
+            title = stringResource(Res.string.fragment_summary_filter_title),
+            toggleAllLabel = stringResource(Res.string.dialog_fragment_summary_neutral_button),
+            options = filterOptions,
+            initialFilter = initialFilter,
+            onApply = {
+                onFilterUpdated(it)
+                showFilterDialog = false
+            },
+            onDismiss = { showFilterDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun CollectSummaryFilterDialog(
+    title: String,
+    toggleAllLabel: String,
+    options: List<CollectSummaryDefinition>,
+    initialFilter: CollectSummaryFilter,
+    onApply: (CollectSummaryFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val initialAttributeSelection = remember(initialFilter, options) {
+        options.filter { it.traitId == null }.associate { option ->
+            option.label to (initialFilter.attributeLabels?.contains(option.label) ?: true)
+        }.toMutableMap()
+    }
+    val initialTraitSelection = remember(initialFilter, options) {
+        options.filter { it.traitId != null }.associate { option ->
+            option.traitId!! to (initialFilter.traitIds?.contains(option.traitId) ?: true)
+        }.toMutableMap()
+    }
+
+    var attributeSelection by remember(initialFilter, options) { mutableStateOf(initialAttributeSelection) }
+    var traitSelection by remember(initialFilter, options) { mutableStateOf(initialTraitSelection) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            LazyColumn {
+                items(options) { option ->
+                    val checked = if (option.traitId == null) {
+                        attributeSelection[option.label] ?: true
+                    } else {
+                        traitSelection[option.traitId] ?: true
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                if (option.traitId == null) {
+                                    attributeSelection = attributeSelection.toMutableMap().apply {
+                                        put(option.label, !checked)
+                                    }
+                                } else {
+                                    traitSelection = traitSelection.toMutableMap().apply {
+                                        put(option.traitId, !checked)
+                                    }
+                                }
+                            }
+                            .padding(vertical = 1.dp, horizontal = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = { isChecked ->
+                                if (option.traitId == null) {
+                                    attributeSelection = attributeSelection.toMutableMap().apply {
+                                        put(option.label, isChecked)
+                                    }
+                                } else {
+                                    traitSelection = traitSelection.toMutableMap().apply {
+                                        put(option.traitId, isChecked)
+                                    }
+                                }
+                            }
+                        )
+                        Text(
+                            text = option.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = {
+                        val enableAll = attributeSelection.values.any { !it } || traitSelection.values.any { !it }
+                        attributeSelection = attributeSelection.mapValues { enableAll }.toMutableMap()
+                        traitSelection = traitSelection.mapValues { enableAll }.toMutableMap()
+                    }
+                ) {
+                    Text(toggleAllLabel)
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+                TextButton(
+                    onClick = {
+                        onApply(
+                            CollectSummaryFilter(
+                                attributeLabels = attributeSelection.filterValues { it }.keys,
+                                traitIds = traitSelection.filterValues { it }.keys
+                            )
+                        )
+                    }
+                ) {
+                    Text("OK")
+                }
+            }
+        }
+    )
+}
+
+private fun loadCollectSummaryFilter(
+    settings: Settings,
+    studyId: Int,
+): CollectSummaryFilter {
+    val attributeKey = "${GeneralKeys.SUMMARY_FILTER_ATTRIBUTES.key}.$studyId"
+    val traitKey = "${GeneralKeys.SUMMARY_FILTER_TRAITS.key}.$studyId"
+
+    val attributeLabels = settings.getStringOrNull(attributeKey)
+        ?.takeIf { it.isNotBlank() }
+        ?.split("\n")
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() }
+        ?.toSet()
+        ?.takeIf { it.isNotEmpty() }
+
+    val traitIds = settings.getStringOrNull(traitKey)
+        ?.takeIf { it.isNotBlank() }
+        ?.split(",")
+        ?.mapNotNull { it.trim().toLongOrNull() }
+        ?.toSet()
+        ?.takeIf { it.isNotEmpty() }
+
+    return CollectSummaryFilter(
+        attributeLabels = attributeLabels,
+        traitIds = traitIds
+    )
+}
+
+private fun persistCollectSummaryFilter(
+    settings: Settings,
+    studyId: Int,
+    filter: CollectSummaryFilter,
+) {
+    val attributeKey = "${GeneralKeys.SUMMARY_FILTER_ATTRIBUTES.key}.$studyId"
+    val traitKey = "${GeneralKeys.SUMMARY_FILTER_TRAITS.key}.$studyId"
+
+    val serializedAttributes = filter.attributeLabels
+        ?.takeIf { it.isNotEmpty() }
+        ?.joinToString("\n")
+        .orEmpty()
+    val serializedTraits = filter.traitIds
+        ?.takeIf { it.isNotEmpty() }
+        ?.joinToString(",")
+        .orEmpty()
+
+    settings.putString(attributeKey, serializedAttributes)
+    settings.putString(traitKey, serializedTraits)
 }
 
 @Composable
