@@ -497,23 +497,28 @@ fun EditableValueText(
     closeKeyboardOnOpen: Boolean = false,
     enabled: Boolean = true,
 ) {
-    TextTrait(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier,
-        defaultValue = defaultValue,
-        isEdited = isEdited,
-        editedColor = color,
-        closeKeyboardOnOpen = closeKeyboardOnOpen,
-        enabled = enabled,
-    )
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(18.dp)
-            .padding(8.dp)
-            .background(androidx.compose.material3.MaterialTheme.colorScheme.primary)
-    )
+    ) {
+        TextTrait(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier,
+            defaultValue = defaultValue,
+            isEdited = isEdited,
+            editedColor = color,
+            closeKeyboardOnOpen = closeKeyboardOnOpen,
+            enabled = enabled,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(18.dp)
+                .padding(8.dp)
+                .background(androidx.compose.material3.MaterialTheme.colorScheme.primary)
+        )
+    }
 }
 
 @Composable
