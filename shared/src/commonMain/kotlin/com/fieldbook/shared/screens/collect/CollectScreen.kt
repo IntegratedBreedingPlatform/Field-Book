@@ -106,6 +106,9 @@ fun CollectScreen(
     val dataGridEnabled = remember {
         settings.getBoolean(PreferenceKeys.DATAGRID_SETTING, false)
     }
+    val toolbarCustomization = loadCollectToolbarCustomization(settings)
+    val summaryEnabled = "summary" in toolbarCustomization
+    val lockEnabled = "lockData" in toolbarCustomization
     val handleBack: () -> Unit = {
         controller.persistCurrentSelection()
         onBack?.invoke()
@@ -267,27 +270,31 @@ fun CollectScreen(
                             )
                         }
                     }
-                    IconButton(
-                        onClick = { showSummaryDialog = true },
-                        enabled = !controller.collectInteractionLocked
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_tb_details),
-                            contentDescription = stringResource(Res.string.preferences_appearance_toolbar_customize_summary)
-                        )
-                    }
-                    IconButton(
-                        onClick = { controller.cycleDataLockState() }
-                    ) {
-                        val lockIcon = when (controller.dataLockState) {
-                            CollectDataLockState.UNLOCKED -> Res.drawable.ic_tb_unlock
-                            CollectDataLockState.LOCKED -> Res.drawable.ic_tb_lock
-                            CollectDataLockState.FROZEN -> Res.drawable.ic_lock_clock
+                    if (summaryEnabled) {
+                        IconButton(
+                            onClick = { showSummaryDialog = true },
+                            enabled = !controller.collectInteractionLocked
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_tb_details),
+                                contentDescription = stringResource(Res.string.preferences_appearance_toolbar_customize_summary)
+                            )
                         }
-                        Icon(
-                            painter = painterResource(lockIcon),
-                            contentDescription = "Data lock"
-                        )
+                    }
+                    if (lockEnabled) {
+                        IconButton(
+                            onClick = { controller.cycleDataLockState() }
+                        ) {
+                            val lockIcon = when (controller.dataLockState) {
+                                CollectDataLockState.UNLOCKED -> Res.drawable.ic_tb_unlock
+                                CollectDataLockState.LOCKED -> Res.drawable.ic_tb_lock
+                                CollectDataLockState.FROZEN -> Res.drawable.ic_lock_clock
+                            }
+                            Icon(
+                                painter = painterResource(lockIcon),
+                                contentDescription = "Data lock"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -792,6 +799,19 @@ private fun loadCollectSummaryFilter(
         attributeLabels = attributeLabels,
         traitIds = traitIds
     )
+}
+
+private fun loadCollectToolbarCustomization(settings: Settings): Set<String> {
+    val serialized = settings.getStringOrNull(PreferenceKeys.TOOLBAR_CUSTOMIZE)
+    if (serialized == null) {
+        return setOf("summary", "lockData")
+    }
+
+    return serialized
+        .split(',', '\n')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .toSet()
 }
 
 private fun persistCollectSummaryFilter(
