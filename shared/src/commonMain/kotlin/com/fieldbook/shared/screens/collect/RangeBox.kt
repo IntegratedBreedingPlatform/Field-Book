@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.chevron_left
 import com.fieldbook.shared.generated.resources.chevron_right
+import com.fieldbook.shared.preferences.PreferenceKeys
+import com.russhwolf.settings.Settings
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -47,6 +50,9 @@ fun RangeBox(
     controller: CollectScreenController,
     modifier: Modifier = Modifier,
 ) {
+    val settings = remember { Settings() }
+    val showRangeProgressBar = settings.getBoolean(PreferenceKeys.RANGE_PROGRESS_BAR, true)
+
     LaunchedEffect(controller.currentUnitIndex) {
         val id = controller.rangeID.getOrNull(controller.currentUnitIndex)
         if (id != null) {
@@ -55,12 +61,16 @@ fun RangeBox(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        PlotsProgressBar(
-            currentIndex = controller.currentUnitIndex,
-            total = controller.units.size,
-            visible = true // Optionally, make this conditional on a preference
-        )
-        Spacer(Modifier.size(16.dp))
+        if (showRangeProgressBar) {
+            PlotsProgressBar(
+                currentIndex = controller.currentUnitIndex,
+                total = controller.units.size,
+                visible = true
+            )
+            Spacer(Modifier.size(16.dp))
+        } else {
+            Spacer(Modifier.size(8.dp))
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
