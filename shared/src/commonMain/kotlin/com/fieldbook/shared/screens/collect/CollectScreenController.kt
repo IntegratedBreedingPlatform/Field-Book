@@ -252,6 +252,10 @@ class CollectScreenController {
         }
     }
 
+    fun setCurrentTraitNa() {
+        updateCurrentTraitValue("NA")
+    }
+
     fun updateCurrentUnitGeoCoordinates(geoCoordinates: String) {
         if (!canMutateCurrentObservation()) {
             showCurrentDataLockMessage()
@@ -321,15 +325,25 @@ class CollectScreenController {
         val plotId = unit?.observation_unit_db_id
 
         if (plotId != null && trait?.id != null) {
+            val traitId = trait.id!!
+            val currentList = traitValues[traitId].orEmpty()
+            if (currentList.size == 1 && currentList.first() == "NA") {
+                observationRepository.deleteTraitByValue(
+                    plotId = plotId,
+                    traitDbId = traitId,
+                    value = "NA",
+                    studyId = studyId.toLong()
+                )
+            }
             observationRepository.insertObservation(
                 plotId = plotId,
-                traitDbId = trait.id!!,
+                traitDbId = traitId,
                 value = value,
                 studyId = studyId.toLong()
             )
             traitValues = traitValues.toMutableMap().apply {
-                val currentList = get(trait.id!!) ?: emptyList()
-                put(trait.id!!, currentList + value)
+                val sanitizedCurrentList = currentList.filterNot { it == "NA" }
+                put(traitId, sanitizedCurrentList + value)
             }
         }
     }
