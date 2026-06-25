@@ -65,6 +65,8 @@ import com.fieldbook.shared.generated.resources.preferences_appearance_traits_pr
 import com.fieldbook.shared.generated.resources.preferences_appearance_traits_progress_bar_description
 import com.fieldbook.shared.generated.resources.preferences_appearance_title
 import com.fieldbook.shared.preferences.PreferenceKeys
+import com.fieldbook.shared.preferences.loadToolbarCustomizationPreference
+import com.fieldbook.shared.preferences.persistToolbarCustomizationPreference
 import com.fieldbook.shared.screens.components.NumberStepperDialog
 import com.russhwolf.settings.Settings
 import org.jetbrains.compose.resources.DrawableResource
@@ -145,13 +147,14 @@ fun AppearancePreferencesScreen(
         toolbarCustomization = toolbarCustomization.toMutableSet().apply {
             if (enabled) add(option) else remove(option)
         }
-        settings.putString(
-            PreferenceKeys.TOOLBAR_CUSTOMIZE,
-            toolbarOptions
+        persistToolbarCustomizationPreference(
+            settings = settings,
+            key = PreferenceKeys.TOOLBAR_CUSTOMIZE,
+            values = toolbarOptions
                 .mapNotNull { toolbarOption ->
                     toolbarOption.value.takeIf { it in toolbarCustomization }
                 }
-                .joinToString(",")
+                .toSet()
         )
     }
 
@@ -344,16 +347,11 @@ private fun loadToolbarCustomization(
     settings: Settings,
     defaultOptions: Set<String>
 ): Set<String> {
-    val serialized = settings.getStringOrNull(PreferenceKeys.TOOLBAR_CUSTOMIZE)
-    if (serialized == null) {
-        return defaultOptions
-    }
-
-    return serialized
-        .split(',', '\n')
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .toSet()
+    return loadToolbarCustomizationPreference(
+        settings = settings,
+        key = PreferenceKeys.TOOLBAR_CUSTOMIZE,
+        defaultOptions = defaultOptions
+    )
 }
 
 @Composable
