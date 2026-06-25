@@ -237,7 +237,7 @@
 | Authorize                        | :white_check_mark: | :white_check_mark: |
 | Display name                     |                    |                    |
 | Auto-configure                   |                    |                    |
-| Logout                           | :white_check_mark: |                    |
+| Logout                           | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Settings/BrAPI/Authorization** |                    |                    |
 | OIDC Flow / Implicit Grant       | :white_check_mark: |                    |
@@ -252,7 +252,7 @@
 | Page size                        | :white_check_mark: | :white_check_mark: |
 | Chunk size                       |                    |                    |
 | Server timeout                   |                    |                    |
-| Cache invalidation               | :white_check_mark: |                    |
+| Cache invalidation               | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Settings/BrAPI/Preferences**   |                    |                    |
 | Value vs Label display           | :white_check_mark: | :white_check_mark: |
