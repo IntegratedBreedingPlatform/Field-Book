@@ -2,23 +2,11 @@ package com.fieldbook.shared.screens.collect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -26,18 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.preferences.PreferenceKeys
-import com.fieldbook.shared.screens.collect.traits.BooleanTrait
-import com.fieldbook.shared.screens.collect.traits.CategoricalTrait
-import com.fieldbook.shared.screens.collect.traits.CounterTrait
-import com.fieldbook.shared.screens.collect.traits.DateTrait
-import com.fieldbook.shared.screens.collect.traits.DiseaseRatingTrait
-import com.fieldbook.shared.screens.collect.traits.AngleTrait
-import com.fieldbook.shared.screens.collect.traits.AudioTrait
-import com.fieldbook.shared.screens.collect.traits.LocationTrait
-import com.fieldbook.shared.screens.collect.traits.NumericTrait
-import com.fieldbook.shared.screens.collect.traits.PercentTrait
-import com.fieldbook.shared.screens.collect.traits.PhotoTrait
-import com.fieldbook.shared.screens.collect.traits.TextTrait
+import com.fieldbook.shared.screens.collect.traits.*
 import com.fieldbook.shared.theme.AppColors
 import com.fieldbook.shared.traits.Formats
 import com.fieldbook.shared.utilities.CategoryJsonUtil
@@ -82,70 +59,77 @@ fun CollectInput(
         .getString(PreferenceKeys.LABELVAL_CUSTOMIZE, "value")
     val showLabel = labelValPref == "label"
 
-    val displayValue = when (formatEnum) {
-        Formats.CATEGORICAL -> {
-            try {
-                val decoded = CategoryJsonUtil.decode(value)
-                if (decoded.isNotEmpty()) {
-                    if (showLabel) {
-                        decoded[0].label ?: decoded[0].value ?: value
+    val displayValue = when {
+        value == "NA" -> "NA"
+        else -> when (formatEnum) {
+            Formats.CATEGORICAL -> {
+                try {
+                    val decoded = CategoryJsonUtil.decode(value)
+                    if (decoded.isNotEmpty()) {
+                        if (showLabel) {
+                            decoded[0].label ?: decoded[0].value ?: value
+                        } else {
+                            decoded[0].value ?: decoded[0].label ?: value
+                        }
                     } else {
-                        decoded[0].value ?: decoded[0].label ?: value
+                        value
                     }
-                } else {
+                } catch (_: Throwable) {
+                    // If it's not valid JSON or decode fails, fall back to raw value
                     value
                 }
-            } catch (_: Throwable) {
-                // If it's not valid JSON or decode fails, fall back to raw value
-                value
             }
-        }
 
-        Formats.MULTI_CATEGORICAL -> {
-            try {
-                val decoded = CategoryJsonUtil.decode(value)
-                decoded.joinToString(":") {
-                    if (showLabel) it.label ?: it.value ?: "" else it.value ?: it.label ?: ""
+            Formats.MULTI_CATEGORICAL -> {
+                try {
+                    val decoded = CategoryJsonUtil.decode(value)
+                    decoded.joinToString(":") {
+                        if (showLabel) it.label ?: it.value ?: "" else it.value ?: it.label ?: ""
+                    }
+                } catch (_: Throwable) {
+                    value
                 }
-            } catch (_: Throwable) {
-                value
             }
-        }
 
-        Formats.DATE -> {
-            try {
-                dateFormatMonthDay(value)
-            } catch (_: Throwable) {
-                value
+            Formats.DATE -> {
+                try {
+                    dateFormatMonthDay(value)
+                } catch (_: Throwable) {
+                    value
+                }
             }
-        }
 
-        Formats.NUMERIC -> {
-            val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
-            if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
-        }
-        Formats.PERCENT -> {
-            val raw = if (value.isEmpty()) trait?.defaultValue.orEmpty() else value
-            when {
-                raw.isBlank() -> ""
-                raw == "NA" -> "NA"
-                raw.endsWith("%") -> raw
-                else -> "$raw%"
+            Formats.NUMERIC -> {
+                val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
+                if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
             }
-        }
-        Formats.BOOLEAN -> {
-            val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
-            val raw = if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
-            when {
-                raw.equals("true", ignoreCase = true) -> "TRUE"
-                raw.equals("false", ignoreCase = true) -> "FALSE"
-                else -> ""
+
+            Formats.PERCENT -> {
+                val raw = if (value.isEmpty()) trait?.defaultValue.orEmpty() else value
+                when {
+                    raw.isBlank() -> ""
+                    raw == "NA" -> "NA"
+                    raw.endsWith("%") -> raw
+                    else -> "$raw%"
+                }
             }
+
+            Formats.BOOLEAN -> {
+                val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
+                val raw = if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
+                when {
+                    raw.equals("true", ignoreCase = true) -> "TRUE"
+                    raw.equals("false", ignoreCase = true) -> "FALSE"
+                    else -> ""
+                }
+            }
+
+            Formats.COUNTER -> {
+                if (value.isEmpty()) "0" else value
+            }
+
+            else -> value
         }
-        Formats.COUNTER -> {
-            if (value.isEmpty()) "0" else value
-        }
-        else -> value
     }
 
     Column(
