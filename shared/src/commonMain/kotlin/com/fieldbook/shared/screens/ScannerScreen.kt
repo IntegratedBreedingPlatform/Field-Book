@@ -1,10 +1,24 @@
 package com.fieldbook.shared.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.fieldbook.shared.generated.resources.Res
+import com.fieldbook.shared.generated.resources.chevron_left
 import com.kashif.cameraK.enums.CameraLens
 import com.kashif.cameraK.enums.Directory
 import com.kashif.cameraK.enums.FlashMode
@@ -13,6 +27,7 @@ import com.kashif.cameraK.ui.CameraPreview
 import com.kashif.qrscannerplugin.rememberQRScannerPlugin
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun ScannerScreen(
@@ -37,17 +52,43 @@ fun ScannerScreen(
             }
     }
 
-    CameraPreview(
-        modifier = Modifier.fillMaxSize(),
-        cameraConfiguration = {
-            setCameraLens(CameraLens.BACK)
-            setFlashMode(FlashMode.OFF)
-            setImageFormat(ImageFormat.JPEG)
-            setDirectory(Directory.PICTURES)
-            addPlugin(qrScannerPlugin)
-        },
-        onCameraControllerReady = {
-            qrScannerPlugin.startScanning()
+    Box(modifier = Modifier.fillMaxSize()) {
+        CameraPreview(
+            modifier = Modifier.fillMaxSize(),
+            cameraConfiguration = {
+                setCameraLens(CameraLens.BACK)
+                setFlashMode(FlashMode.OFF)
+                setImageFormat(ImageFormat.JPEG)
+                setDirectory(Directory.PICTURES)
+                addPlugin(qrScannerPlugin)
+            },
+            onCameraControllerReady = {
+                qrScannerPlugin.startScanning()
+            }
+        )
+
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 12.dp, top = 8.dp)
+                .size(64.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    shape = CircleShape
+                )
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    shape = CircleShape
+                )
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.chevron_left),
+                contentDescription = "Back to collector",
+                modifier = Modifier.size(28.dp)
+            )
         }
-    )
+    }
 }
