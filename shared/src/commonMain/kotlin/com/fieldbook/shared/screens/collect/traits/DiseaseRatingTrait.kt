@@ -70,6 +70,10 @@ private suspend fun loadRustCodes(): List<String> = withContext(Dispatchers.Defa
 }
 
 private fun appendDiseaseRatingValue(currentValue: String, pressedValue: String): String? {
+    if (currentValue == "NA") {
+        return pressedValue
+    }
+
     if (currentValue.isNotEmpty() &&
         pressedValue != "/" &&
         !currentValue.endsWith("/")
@@ -100,6 +104,14 @@ fun DiseaseRatingTrait(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        if (value == "NA") {
+            Text(
+                text = "NA",
+                color = Color.Black,
+                style = rustLetterTextStyle
+            )
+        }
+
         rustCodes.chunked(6).forEach { rowCodes ->
             Box(modifier = Modifier.fillMaxWidth()) {
                 Row(
