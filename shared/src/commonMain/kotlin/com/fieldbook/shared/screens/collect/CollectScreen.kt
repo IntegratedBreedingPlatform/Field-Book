@@ -75,6 +75,9 @@ import com.fieldbook.shared.database.repository.ObservationUnitAttributeReposito
 import com.fieldbook.shared.database.repository.ObservationUnitPropertyRepository
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.preferences.PreferenceKeys
+import com.fieldbook.shared.preferences.loadToolbarCustomizationPreference
+import com.fieldbook.shared.preferences.loadStringSetPreference
+import com.fieldbook.shared.preferences.persistStringSetPreference
 import com.fieldbook.shared.screens.ScannerScreen
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
 import com.fieldbook.shared.screens.collect.traits.PhotoTraitDisplayMode
@@ -311,7 +314,7 @@ fun CollectScreen(
                 canSetNa = !controller.isCurrentObservationLocked(),
                 canDeleteCurrentValue = canDeleteCurrentValue,
                 onScanBarcode = { isBarcodeScannerFullscreen = true },
-                onSetNa = { controller.updateCurrentTraitValue("NA") },
+                onSetNa = controller::setCurrentTraitNa,
                 onDelete = controller::clearCurrentTraitValue
             )
         }
@@ -780,20 +783,19 @@ private fun loadCollectSummaryFilter(
     val attributeKey = "${GeneralKeys.SUMMARY_FILTER_ATTRIBUTES.key}.$studyId"
     val traitKey = "${GeneralKeys.SUMMARY_FILTER_TRAITS.key}.$studyId"
 
-    val attributeLabels = settings.getStringOrNull(attributeKey)
-        ?.takeIf { it.isNotBlank() }
-        ?.split("\n")
-        ?.map { it.trim() }
-        ?.filter { it.isNotEmpty() }
-        ?.toSet()
-        ?.takeIf { it.isNotEmpty() }
+    val attributeLabels = loadStringSetPreference(
+        settings = settings,
+        key = attributeKey,
+        legacySeparators = charArrayOf('\n')
+    )
 
-    val traitIds = settings.getStringOrNull(traitKey)
-        ?.takeIf { it.isNotBlank() }
-        ?.split(",")
+    val traitIds = loadStringSetPreference(
+        settings = settings,
+        key = traitKey,
+        legacySeparators = charArrayOf(',')
+    )
         ?.mapNotNull { it.trim().toLongOrNull() }
         ?.toSet()
-        ?.takeIf { it.isNotEmpty() }
 
     return CollectSummaryFilter(
         attributeLabels = attributeLabels,
@@ -802,16 +804,11 @@ private fun loadCollectSummaryFilter(
 }
 
 private fun loadCollectToolbarCustomization(settings: Settings): Set<String> {
-    val serialized = settings.getStringOrNull(PreferenceKeys.TOOLBAR_CUSTOMIZE)
-    if (serialized == null) {
-        return setOf("summary", "lockData")
-    }
-
-    return serialized
-        .split(',', '\n')
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .toSet()
+    return loadToolbarCustomizationPreference(
+        settings = settings,
+        key = PreferenceKeys.TOOLBAR_CUSTOMIZE,
+        defaultOptions = setOf("summary", "lockData")
+    )
 }
 
 private fun persistCollectSummaryFilter(
@@ -822,17 +819,16 @@ private fun persistCollectSummaryFilter(
     val attributeKey = "${GeneralKeys.SUMMARY_FILTER_ATTRIBUTES.key}.$studyId"
     val traitKey = "${GeneralKeys.SUMMARY_FILTER_TRAITS.key}.$studyId"
 
-    val serializedAttributes = filter.attributeLabels
-        ?.takeIf { it.isNotEmpty() }
-        ?.joinToString("\n")
-        .orEmpty()
-    val serializedTraits = filter.traitIds
-        ?.takeIf { it.isNotEmpty() }
-        ?.joinToString(",")
-        .orEmpty()
-
-    settings.putString(attributeKey, serializedAttributes)
-    settings.putString(traitKey, serializedTraits)
+    persistStringSetPreference(
+        settings = settings,
+        key = attributeKey,
+        values = filter.attributeLabels ?: emptySet()
+    )
+    persistStringSetPreference(
+        settings = settings,
+        key = traitKey,
+        values = filter.traitIds?.map { it.toString() }?.toSet() ?: emptySet()
+    )
 }
 
 @Composable
