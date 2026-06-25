@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -127,10 +128,13 @@ fun PhotoTrait(
         return storedValues
             .flatMap { it.split(PHOTO_VALUE_SEPARATOR) }
             .map(::normalizeStoredPhotoRef)
-            .filter { it.isNotBlank() }
+            .filter { it.isNotBlank() && it != "NA" }
     }
 
     val valuesKey = values.joinToString(PHOTO_VALUE_SEPARATOR)
+    val hasNaPlaceholder = remember(valuesKey) {
+        values.any { it.trim() == "NA" }
+    }
     val photoUris = remember(valuesKey) {
         val initial = decodeStoredPhotoRefs(values)
         mutableStateOf(initial)
@@ -366,6 +370,30 @@ fun PhotoTrait(
         ) {
             val itemWidth = 230.dp
             val itemShape = RoundedCornerShape(8.dp)
+
+            if (hasNaPlaceholder && photoUris.value.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(itemWidth)
+                            .clip(itemShape)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = itemShape
+                            )
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "NA",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
             // Images
             itemsIndexed(photoUris.value) { index, photoUri ->
