@@ -129,6 +129,7 @@ enum class GeneralKeys(val key: String) {
 
     // summary filter
     SUMMARY_FILTER_ATTRIBUTES("com.fieldbook.tracker.summary.SUMMARY_FILTER_ATTRIBUTES"),
+    SUMMARY_FILTER_TRAITS("com.fieldbook.tracker.summary.SUMMARY_FILTER_TRAITS"),
 
     // Other
 

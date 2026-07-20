@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,15 +15,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.graphics.Color
 
 @Composable
 fun TextTrait(
@@ -34,6 +34,7 @@ fun TextTrait(
     isEdited: Boolean = false,
     editedColor: Color = Color.Unspecified,
     closeKeyboardOnOpen: Boolean = false,
+    enabled: Boolean = true,
 ) {
     var local by remember {
         mutableStateOf(
@@ -56,7 +57,7 @@ fun TextTrait(
     }
 
     LaunchedEffect(closeKeyboardOnOpen) {
-        if (closeKeyboardOnOpen) {
+        if (!enabled || closeKeyboardOnOpen) {
             keyboardController?.hide()
         } else {
             focusRequester.requestFocus()
@@ -70,19 +71,16 @@ fun TextTrait(
             local = v.copy(selection = TextRange(v.text.length))
             onValueChange(v.text)
         },
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
         singleLine = true,
         textStyle = MaterialTheme.typography.titleLarge.copy(
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (isEdited) FontWeight.Normal else FontWeight.Bold,
             textAlign = TextAlign.Center,
-            fontStyle = if (isEdited) FontStyle.Italic else FontStyle.Normal,
-            color = if (isEdited) {
-                if (editedColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else editedColor
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
+            fontStyle = if (isEdited) FontStyle.Normal else FontStyle.Italic,
+            color = if (editedColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else editedColor,
         ),
         decorationBox = { innerTextField ->
             if (local.text.isBlank() && !defaultValue.isNullOrBlank()) {

@@ -244,13 +244,13 @@ private fun AudioInfoCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
             if (metadata != null) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
                 Text(
                     text = "${stringResource(Res.string.trait_audio_timestamp)}${metadata.timestamp}",
                     style = MaterialTheme.typography.bodyLarge,

@@ -83,12 +83,12 @@
 | **Collect actions**              |                    |                    |
 | Search                           |                    |                    |
 | Resources                        |                    |                    |
-| Summary                          |                    |                    |
-| Lock                             |                    |                    |
-| Freeze                           |                    |                    |
-| Scan                             |                    |                    |
-| Set NA                           |                    |                    |
-| Delete                           |                    |                    |
+| Summary                          | :white_check_mark: | :white_check_mark: |
+| Lock                             | :white_check_mark: | :white_check_mark: |
+| Freeze                           | :white_check_mark: | :white_check_mark: |
+| Scan                             | :white_check_mark: | :white_check_mark: |
+| Set NA                           | :white_check_mark: | :white_check_mark: |
+| Delete                           | :white_check_mark: | :white_check_mark: |
 | Data grid                        | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Export**                       |                    |                    |
@@ -117,11 +117,11 @@
 | **Settings/Appearance**          |                    |                    |
 | Theme                            |                    |                    |
 | Language                         |                    |                    |
-| Toolbar actions                  |                    |                    |
-| Number of infobars               |                    |                    |
-| Hide infobar prefix              |                    |                    |
-| Entries progress bar             |                    |                    |
-| Traits progress bar              |                    |                    |
+| Toolbar actions                  | :white_check_mark: | :white_check_mark: |
+| Number of infobars               | :white_check_mark: | :white_check_mark: |
+| Hide infobar prefix              | :white_check_mark: | :white_check_mark: |
+| Entries progress bar             | :white_check_mark: | :white_check_mark: |
+| Traits progress bar              | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Settings/Appearance/Theme**    |                    |                    |
 | Theme                            |                    |                    |
@@ -216,7 +216,7 @@
 | ...                              |                    |                    |
 |                                  |                    |                    |
 | **Traits**                       |                    |                    |
-| Import from BrAPI                | :white_check_mark: |                    |
+| Import from BrAPI                | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | ...                              |                    |                    |
 |                                  |                    |                    |
@@ -237,7 +237,7 @@
 | Authorize                        | :white_check_mark: | :white_check_mark: |
 | Display name                     |                    |                    |
 | Auto-configure                   |                    |                    |
-| Logout                           | :white_check_mark: |                    |
+| Logout                           | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Settings/BrAPI/Authorization** |                    |                    |
 | OIDC Flow / Implicit Grant       | :white_check_mark: |                    |
@@ -247,12 +247,12 @@
 | OIDC Scope                       |                    |                    |
 |                                  |                    |                    |
 | **Settings/BrAPI/Advanced**      |                    |                    |
-| BrAPI version / V1               | :white_check_mark: |                    |
-| BrAPI version / V2               | :white_check_mark: |                    |
-| Page size                        | :white_check_mark: |                    |
+| BrAPI version / V1               | :white_check_mark: | :white_check_mark: |
+| BrAPI version / V2               | :white_check_mark: | :white_check_mark: |
+| Page size                        | :white_check_mark: | :white_check_mark: |
 | Chunk size                       |                    |                    |
 | Server timeout                   |                    |                    |
-| Cache invalidation               | :white_check_mark: |                    |
+| Cache invalidation               | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Settings/BrAPI/Preferences**   |                    |                    |
-| Value vs Label display           |                    |                    |
+| Value vs Label display           | :white_check_mark: | :white_check_mark: |

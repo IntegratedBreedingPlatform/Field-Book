@@ -125,4 +125,46 @@ class ObservationUnitPropertyRepository(
         return getSortedObservationUnitData(studyId)
     }
 
+    fun getAttributeValuesForUnit(
+        uniqueName: String,
+        unitId: String,
+        attributeLabels: List<String>
+    ): Map<String, String> {
+        if (uniqueName.isBlank() || unitId.isBlank() || attributeLabels.isEmpty()) return emptyMap()
+
+        val selectStatement = attributeLabels.joinToString(", ") { label ->
+            sqlIdentifier(label)
+        }
+
+        val query = """
+            SELECT $selectStatement
+            FROM $sObservationUnitPropertyViewName
+            WHERE ${sqlIdentifier(uniqueName)} = ?
+            LIMIT 1
+        """.trimIndent()
+
+        val result = driver.executeQuery(
+            identifier = null,
+            sql = query,
+            mapper = { cursor ->
+                if (!cursor.next().value) {
+                    return@executeQuery QueryResult.Value(emptyMap())
+                }
+
+                val values = attributeLabels.mapIndexed { index, label ->
+                    label to (cursor.getString(index) ?: "")
+                }.toMap()
+
+                QueryResult.Value(values)
+            },
+            parameters = 1
+        ) {
+            bindString(0, unitId)
+        }
+
+        return result.value
+    }
+
+    private fun sqlIdentifier(value: String): String = "\"${value.replace("\"", "\"\"")}\""
+
 }

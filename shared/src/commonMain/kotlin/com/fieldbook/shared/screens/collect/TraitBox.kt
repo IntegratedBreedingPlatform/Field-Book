@@ -13,6 +13,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.chevron_left
 import com.fieldbook.shared.generated.resources.chevron_right
+import com.fieldbook.shared.preferences.PreferenceKeys
+import com.russhwolf.settings.Settings
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -28,6 +31,9 @@ fun TraitBox(
     viewModel: CollectScreenController,
     modifier: Modifier = Modifier
 ) {
+    val settings = remember { Settings() }
+    val showTraitProgressBar = settings.getBoolean(PreferenceKeys.TRAITS_PROGRESS_BAR, true)
+
     Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -35,8 +41,8 @@ fun TraitBox(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(
-                onClick = { viewModel.updateCurrentTraitIndex(viewModel.currentTraitIndex - 1) },
-                enabled = !viewModel.collectInteractionLocked && viewModel.currentTraitIndex > 0,
+                onClick = { viewModel.goToPreviousTrait() },
+                enabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -53,8 +59,8 @@ fun TraitBox(
                 modifier = Modifier.align(Alignment.CenterVertically)
             )
             IconButton(
-                onClick = { viewModel.updateCurrentTraitIndex(viewModel.currentTraitIndex + 1) },
-                enabled = !viewModel.collectInteractionLocked && viewModel.currentTraitIndex < viewModel.traits.size - 1,
+                onClick = { viewModel.goToNextTrait() },
+                enabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -80,12 +86,14 @@ fun TraitBox(
                 textAlign = TextAlign.Center
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            StatusBar(
-                viewModel = viewModel,
-                modifier = Modifier.fillMaxWidth()
-            )
+        if (showTraitProgressBar) {
+            Spacer(Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StatusBar(
+                    viewModel = viewModel,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

@@ -1,23 +1,27 @@
 package com.fieldbook.shared.screens.collect
 
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
-import org.jetbrains.compose.resources.painterResource
-import com.fieldbook.shared.generated.resources.Res
 import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.circle_filled
 import com.fieldbook.shared.generated.resources.circle_outline
-import com.fieldbook.shared.generated.resources.square_rounded_filled
-import com.fieldbook.shared.generated.resources.square_rounded_outline
-import androidx.compose.material3.MaterialTheme
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun StatusBar(
@@ -35,23 +39,30 @@ fun StatusBar(
         }
         return
     }
-    Row(
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(viewModel.currentTraitIndex, viewModel.traits.size) {
+        if (viewModel.traits.isNotEmpty()) {
+            listState.animateScrollToItem(viewModel.currentTraitIndex)
+        }
+    }
+
+    LazyRow(
+        state = listState,
         modifier = modifier
-            .horizontalScroll(rememberScrollState())
             .height(32.dp)
             .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        viewModel.traits.forEachIndexed { index, trait ->
+        itemsIndexed(
+            items = viewModel.traits,
+            key = { _, trait -> trait.id ?: trait.name }
+        ) { index, trait ->
             val hasObservation = viewModel.traitValues[trait.id] != null
             val isCurrent = index == viewModel.currentTraitIndex
-            val iconRes = if (isCurrent) {
-                if (hasObservation) Res.drawable.square_rounded_filled else Res.drawable.square_rounded_outline
-            } else {
-                if (hasObservation) Res.drawable.circle_filled else Res.drawable.circle_outline
-            }
+            val iconRes = if (hasObservation) Res.drawable.circle_filled else Res.drawable.circle_outline
             val iconColor = if (isCurrent) {
-                MaterialTheme.colorScheme.primaryContainer
+                MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.secondary
             }
