@@ -1,14 +1,14 @@
 package com.fieldbook.shared.screens.collect
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,33 +50,33 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.fieldbook.shared.database.repository.ObservationUnitAttributeRepository
+import com.fieldbook.shared.database.repository.ObservationUnitPropertyRepository
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.act_collect_barcode_button_content_description
+import com.fieldbook.shared.generated.resources.act_collect_delete_value_button_content_description
+import com.fieldbook.shared.generated.resources.chevron_left
+import com.fieldbook.shared.generated.resources.chevron_right
+import com.fieldbook.shared.generated.resources.dialog_fragment_summary_neutral_button
+import com.fieldbook.shared.generated.resources.fragment_summary_filter_title
+import com.fieldbook.shared.generated.resources.fragment_summary_next_button_text
+import com.fieldbook.shared.generated.resources.fragment_summary_prev_button_text
+import com.fieldbook.shared.generated.resources.fragment_summary_toolbar_title
 import com.fieldbook.shared.generated.resources.ic_field
 import com.fieldbook.shared.generated.resources.ic_lock_clock
 import com.fieldbook.shared.generated.resources.ic_tb_barcode
 import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.ic_tb_details
 import com.fieldbook.shared.generated.resources.ic_tb_lock
-import com.fieldbook.shared.generated.resources.ic_transfer_error
 import com.fieldbook.shared.generated.resources.ic_tb_unlock
-import com.fieldbook.shared.generated.resources.act_collect_delete_value_button_content_description
-import com.fieldbook.shared.generated.resources.fragment_summary_toolbar_title
-import com.fieldbook.shared.generated.resources.fragment_summary_filter_title
-import com.fieldbook.shared.generated.resources.fragment_summary_next_button_text
-import com.fieldbook.shared.generated.resources.fragment_summary_prev_button_text
-import com.fieldbook.shared.generated.resources.dialog_fragment_summary_neutral_button
-import com.fieldbook.shared.generated.resources.chevron_left
-import com.fieldbook.shared.generated.resources.chevron_right
+import com.fieldbook.shared.generated.resources.ic_transfer_error
 import com.fieldbook.shared.generated.resources.menu_fragment_summary_filter_title
 import com.fieldbook.shared.generated.resources.pencil
 import com.fieldbook.shared.generated.resources.preferences_appearance_toolbar_customize_summary
-import com.fieldbook.shared.database.repository.ObservationUnitAttributeRepository
-import com.fieldbook.shared.database.repository.ObservationUnitPropertyRepository
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.preferences.PreferenceKeys
-import com.fieldbook.shared.preferences.loadToolbarCustomizationPreference
 import com.fieldbook.shared.preferences.loadStringSetPreference
+import com.fieldbook.shared.preferences.loadToolbarCustomizationPreference
 import com.fieldbook.shared.preferences.persistStringSetPreference
 import com.fieldbook.shared.screens.ScannerScreen
 import com.fieldbook.shared.screens.collect.traits.PhotoTrait
@@ -846,6 +846,7 @@ private fun CollectBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
