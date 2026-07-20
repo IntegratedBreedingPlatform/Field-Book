@@ -59,6 +59,14 @@ class ObservationRepository() {
             .mapValues { entry -> entry.value.map { it.value_!! } }
     }
 
+    fun getFieldTraitValues(studyId: Long): Map<Long, List<String>> {
+        return db.observationsQueries.getFieldTraitValues(studyId)
+            .executeAsList()
+            .filter { it.value_ != null && it.observation_variable_db_id != null }
+            .groupBy { it.observation_variable_db_id!! }
+            .mapValues { entry -> entry.value.map { it.value_!! } }
+    }
+
     fun getRep(studyId: Long, plotId: String, traitId: Long): Int {
         return db.observationsQueries.countObservations(
             study_id = studyId,
