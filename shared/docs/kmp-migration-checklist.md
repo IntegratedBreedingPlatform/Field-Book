@@ -29,7 +29,7 @@
 | Delete field                     | :white_check_mark: | :white_check_mark: |
 | Collect                          |                    |                    |
 | Export                           |                    |                    |
-| Data                             |                    |                    |
+| Data                             | :white_check_mark: |                    |
 |                                  |                    |                    |
 | ...                              |                    |                    |
 |                                  |                    |                    |
@@ -211,7 +211,6 @@
 | Collect                          |                    |                    |
 | Export                           |                    |                    |
 | Sync                             | :white_check_mark: | :white_check_mark: |
-| Data                             |                    |                    |
 |                                  |                    |                    |
 | ...                              |                    |                    |
 |                                  |                    |                    |
