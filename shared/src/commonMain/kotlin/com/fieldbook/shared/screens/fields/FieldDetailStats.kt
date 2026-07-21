@@ -3,6 +3,7 @@ package com.fieldbook.shared.screens.fields
 import com.fieldbook.shared.database.models.TraitObject
 import com.fieldbook.shared.utilities.CategoryJsonUtil
 import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -110,7 +111,9 @@ private fun buildCategoryBars(
     }
 }
 
-private fun buildHistogramBins(values: List<Double>): List<ChartBar> {
+internal fun buildHistogramBins(
+    values: List<Double>,
+): List<ChartBar> {
     if (values.isEmpty()) return emptyList()
 
     val minValue = values.minOrNull() ?: 0.0
@@ -120,21 +123,52 @@ private fun buildHistogramBins(values: List<Double>): List<ChartBar> {
         return listOf(ChartBar(label = minValue.toInt().toString(), count = values.size))
     }
 
-    val binCount = max(1, ceil(sqrt(values.size.toDouble())).toInt())
+    val binCount = calculateHistogramBinCount(values.size)
     val binSize = ceil(range / binCount).coerceAtLeast(1.0)
-    val bins = MutableList(binCount) { 0 }
+    val bins = mutableMapOf<Int, Int>()
 
     values.forEach { value ->
-        val binIndex = ((value - minValue) / binSize).toInt().coerceIn(0, binCount - 1)
-        bins[binIndex] += 1
+        val binIndex = floor((value - minValue) / binSize).toInt().coerceAtLeast(0)
+        bins[binIndex] = (bins[binIndex] ?: 0) + 1
     }
 
-    return bins.mapIndexed { index, count ->
+    val maxBinIndex = maxOf(binCount - 1, bins.keys.maxOrNull() ?: 0)
+    return (0..maxBinIndex).map { index ->
+        val binStart = minValue + binSize * index
+        val binEnd = minValue + binSize * (index + 1)
+
         ChartBar(
-            label = (minValue + binSize * index).toInt().toString(),
-            count = count,
+            label = formatHistogramBinLabel(binStart, binEnd, binSize),
+            count = bins[index] ?: 0,
         )
-    } + ChartBar(label = (minValue + binSize * binCount).toInt().toString(), count = 0)
+    }
+}
+
+private fun calculateHistogramBinCount(valueCount: Int): Int {
+    val sqrtBinCount = sqrt(valueCount.toDouble())
+    return max(
+        1,
+        if (valueCount in 4..6) {
+            floor(sqrtBinCount).toInt()
+        } else {
+            ceil(sqrtBinCount).toInt()
+        }
+    )
+}
+
+private fun formatHistogramBinLabel(
+    binStart: Double,
+    binEnd: Double,
+    binSize: Double,
+): String {
+    val start = formatHistogramBoundary(binStart)
+    if (binSize == 1.0) return start
+
+    return "$start-${formatHistogramBoundary(binEnd)}"
+}
+
+private fun formatHistogramBoundary(value: Double): String {
+    return value.toInt().toString()
 }
 
 private fun parseCategories(categories: String?): List<String> {
