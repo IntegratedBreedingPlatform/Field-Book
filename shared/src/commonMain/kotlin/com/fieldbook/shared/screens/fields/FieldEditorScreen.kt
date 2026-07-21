@@ -52,6 +52,7 @@ import com.fieldbook.shared.brapi.BrAPIServiceFactory
 import com.fieldbook.shared.brapi.BrapiResult
 import com.fieldbook.shared.components.AppListItem
 import com.fieldbook.shared.database.models.FieldObject
+import com.fieldbook.shared.database.repository.ObservationRepository
 import com.fieldbook.shared.database.repository.ObservationUnitAttributeRepository
 import com.fieldbook.shared.database.repository.StudyRepository
 import com.fieldbook.shared.database.repository.TraitRepository
@@ -596,6 +597,7 @@ class FieldEditorScreenViewModel(
     private val observationUnitAttributeRepository: ObservationUnitAttributeRepository,
     private val studyRepository: StudyRepository,
     private val traitRepository: TraitRepository,
+    private val observationRepository: ObservationRepository = ObservationRepository(),
     private val brapiObservationSyncSupport: BrapiObservationSyncSupport = BrapiObservationSyncSupport(
         studyRepository = studyRepository,
         traitRepository = traitRepository,
@@ -627,6 +629,9 @@ class FieldEditorScreenViewModel(
 
     private val _fieldAttributes = MutableStateFlow<List<String>>(emptyList())
     val fieldAttributes: StateFlow<List<String>> = _fieldAttributes.asStateFlow()
+
+    private val _fieldTraitDetails = MutableStateFlow<List<FieldTraitDetailUiModel>>(emptyList())
+    val fieldTraitDetails: StateFlow<List<FieldTraitDetailUiModel>> = _fieldTraitDetails.asStateFlow()
 
     private val _messages = MutableSharedFlow<String>()
     val messages: SharedFlow<String> = _messages.asSharedFlow()
@@ -690,6 +695,7 @@ class FieldEditorScreenViewModel(
                 _fieldAttributes.value = observationUnitAttributeRepository
                     .getAllNames(fieldId.toLong())
                     .filter { it != "geo_coordinates" }
+                _fieldTraitDetails.value = loadFieldTraitDetails(fieldId)
                 _sortAscending.value =
                     settings.getString("${GeneralKeys.SORT_ORDER.key}.$fieldId", "ASC") == "ASC"
             } catch (e: Exception) {
@@ -704,6 +710,7 @@ class FieldEditorScreenViewModel(
     fun clearFieldDetail() {
         _fieldDetail.value = null
         _fieldAttributes.value = emptyList()
+        _fieldTraitDetails.value = emptyList()
     }
 
     suspend fun validateFieldName(newName: String, currentFieldId: Int): NameCheckResult {
@@ -871,7 +878,17 @@ class FieldEditorScreenViewModel(
 
     private suspend fun refreshFieldData(fieldId: Int) {
         _fieldDetail.value = studyRepository.getById(fieldId)
+        _fieldTraitDetails.value = loadFieldTraitDetails(fieldId)
         _fields.value = studyRepository.getAllFields()
+    }
+
+    private fun loadFieldTraitDetails(fieldId: Int): List<FieldTraitDetailUiModel> {
+        val entryCount = _fieldDetail.value?.count?.toIntOrNull() ?: 0
+        return buildFieldTraitDetails(
+            traits = traitRepository.getAllTraitsWithAttributes(),
+            observationsByTraitId = observationRepository.getFieldTraitValues(fieldId.toLong()),
+            entryCount = entryCount,
+        )
     }
 
     private fun getBrapiPageSize(): Int {
@@ -893,6 +910,7 @@ fun fieldEditorViewModelFactory() = viewModelFactory {
             observationUnitAttributeRepository = ObservationUnitAttributeRepository(),
             studyRepository = StudyRepository(),
             traitRepository = TraitRepository(),
+            observationRepository = ObservationRepository(),
         )
     }
 }

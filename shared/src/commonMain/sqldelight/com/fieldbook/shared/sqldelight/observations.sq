@@ -28,6 +28,11 @@ FROM observations
 WHERE study_id = ?
 GROUP BY observation_unit_id, observation_variable_db_id;
 
+getFieldTraitValues:
+SELECT observation_variable_db_id, value
+FROM observations
+WHERE study_id = ?;
+
 deleteTrait:
 DELETE FROM observations
 WHERE study_id = ? AND observation_variable_db_id = ? AND observation_unit_id = ?;

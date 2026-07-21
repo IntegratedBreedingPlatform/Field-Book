@@ -115,6 +115,7 @@ fun FieldDetailScreen(
     val attributes by viewModel.fieldAttributes.collectAsState()
     val sortAscending by viewModel.sortAscending.collectAsState()
     val activeFieldId by viewModel.activeFieldId.collectAsState()
+    val traitDetails by viewModel.fieldTraitDetails.collectAsState()
     val brapiSyncPreview by viewModel.brapiSyncPreview.collectAsState()
     val brapiSyncLoading by viewModel.brapiSyncLoading.collectAsState()
     val brapiSyncSaving by viewModel.brapiSyncSaving.collectAsState()
@@ -389,6 +390,14 @@ fun FieldDetailScreen(
                             }
                         }
                     }
+                }
+
+                item {
+                    FieldDetailDataSection(
+                        traitDetails = traitDetails,
+                        traitCount = currentField.trait_count.orEmpty(),
+                        observationCount = currentField.observation_count.orEmpty()
+                    )
                 }
             }
 
