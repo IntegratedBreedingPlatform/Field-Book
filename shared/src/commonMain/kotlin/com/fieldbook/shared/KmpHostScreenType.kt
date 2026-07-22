@@ -11,6 +11,7 @@ enum class KmpHostScreenType(val value: String) {
     BRAPI_FILTER("brapi_filter"),
     COLLECT("collect"),
     EXPORT("export"),
+    STATISTICS("statistics"),
     ABOUT("about"),
     PREFERENCES("preferences"),
     BRAPI_PREFERENCES("brapi_preferences"),

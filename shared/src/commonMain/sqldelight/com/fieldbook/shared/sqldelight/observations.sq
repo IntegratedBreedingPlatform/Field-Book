@@ -160,6 +160,24 @@ WHERE obs.study_id = ?
   AND vars.trait_data_source IS NOT NULL
   AND vars.observation_variable_field_book_format = 'photo';
 
+getStatisticsObservations:
+SELECT
+  obs.study_id,
+  study.study_name,
+  study.study_alias,
+  obs.observation_unit_id,
+  obs.value,
+  obs.observation_time_stamp,
+  obs.collector,
+  vars.observation_variable_name,
+  vars.observation_variable_field_book_format
+FROM observations AS obs
+LEFT JOIN studies AS study
+  ON study.internal_id_study = obs.study_id
+LEFT JOIN observation_variables AS vars
+  ON vars.internal_id_observation_variable = obs.observation_variable_db_id
+ORDER BY obs.observation_time_stamp COLLATE NOCASE ASC;
+
 countLocalBrapiExportObservations:
 SELECT COUNT(*)
 FROM observations AS obs
