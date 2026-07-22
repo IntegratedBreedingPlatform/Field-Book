@@ -81,7 +81,7 @@
 | Customize Infobar                |                    |                    |
 |                                  |                    |                    |
 | **Collect actions**              |                    |                    |
-| Search                           |                    |                    |
+| Search                           | :white_check_mark: | :white_check_mark: |
 | Resources                        |                    |                    |
 | Summary                          | :white_check_mark: | :white_check_mark: |
 | Lock                             | :white_check_mark: | :white_check_mark: |

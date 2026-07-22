@@ -15,9 +15,9 @@ import com.fieldbook.shared.database.repository.TraitRepository
 import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.activity_collect_frozen_state
 import com.fieldbook.shared.generated.resources.activity_collect_locked_state
+import com.fieldbook.shared.generated.resources.activity_collect_unlocked_state
 import com.fieldbook.shared.generated.resources.trait_error_maximum_value
 import com.fieldbook.shared.generated.resources.trait_error_minimum_value
-import com.fieldbook.shared.generated.resources.activity_collect_unlocked_state
 import com.fieldbook.shared.objects.RangeObject
 import com.fieldbook.shared.preferences.GeneralKeys
 import com.fieldbook.shared.screens.datagrid.DataGridSelection
@@ -206,6 +206,15 @@ class CollectScreenController {
         updateCurrentUnitIndex(unitIndex)
         updateCurrentTraitIndex(traitIndex)
         return true
+    }
+
+    fun moveToUnit(uniqueId: String): Boolean {
+        if (!validateCurrentTraitValue()) return false
+
+        val unitIndex = units.indexOfFirst { it.observation_unit_db_id == uniqueId }
+        if (unitIndex < 0) return false
+
+        return updateCurrentUnitIndex(unitIndex)
     }
 
     private fun loadTraitValues() {
