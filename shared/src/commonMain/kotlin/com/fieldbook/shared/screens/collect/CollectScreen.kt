@@ -68,8 +68,10 @@ import com.fieldbook.shared.generated.resources.ic_tb_barcode
 import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.ic_tb_details
 import com.fieldbook.shared.generated.resources.ic_tb_lock
+import com.fieldbook.shared.generated.resources.ic_tb_search
 import com.fieldbook.shared.generated.resources.ic_tb_unlock
 import com.fieldbook.shared.generated.resources.ic_transfer_error
+import com.fieldbook.shared.generated.resources.main_toolbar_search
 import com.fieldbook.shared.generated.resources.menu_fragment_summary_filter_title
 import com.fieldbook.shared.generated.resources.pencil
 import com.fieldbook.shared.generated.resources.preferences_appearance_toolbar_customize_summary
@@ -104,12 +106,14 @@ fun CollectScreen(
     var isBarcodeScannerFullscreen by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
     var showDataGrid by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val settings = remember { Settings() }
     val dataGridEnabled = remember {
         settings.getBoolean(PreferenceKeys.DATAGRID_SETTING, false)
     }
     val toolbarCustomization = loadCollectToolbarCustomization(settings)
+    val searchEnabled = "search" in toolbarCustomization
     val summaryEnabled = "summary" in toolbarCustomization
     val lockEnabled = "lockData" in toolbarCustomization
     val handleBack: () -> Unit = {
@@ -262,6 +266,17 @@ fun CollectScreen(
                     }
                 },
                 actions = {
+                    if (searchEnabled) {
+                        IconButton(
+                            onClick = { showSearchDialog = true },
+                            enabled = !controller.collectInteractionLocked
+                        ) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_tb_search),
+                                contentDescription = stringResource(Res.string.main_toolbar_search)
+                            )
+                        }
+                    }
                     if (dataGridEnabled) {
                         IconButton(
                             onClick = { showDataGrid = true },
@@ -385,6 +400,12 @@ fun CollectScreen(
             onDismiss = { showSummaryDialog = false }
         )
     }
+
+    CollectSearchDialog(
+        controller = controller,
+        visible = showSearchDialog,
+        onDismiss = { showSearchDialog = false }
+    )
 }
 
 private data class CollectSummaryDefinition(
@@ -807,7 +828,7 @@ private fun loadCollectToolbarCustomization(settings: Settings): Set<String> {
     return loadToolbarCustomizationPreference(
         settings = settings,
         key = PreferenceKeys.TOOLBAR_CUSTOMIZE,
-        defaultOptions = setOf("summary", "lockData")
+        defaultOptions = setOf("search", "summary", "lockData")
     )
 }
 
