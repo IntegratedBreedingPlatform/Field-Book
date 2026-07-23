@@ -338,8 +338,10 @@ kotlin {
     // See: https://kotlinlang.org/docs/multiplatform-discover-project.html#targets
     androidLibrary {
         namespace = "com.fieldbook.shared"
-        compileSdk = 34
+        compileSdk = 36 // match app/build.gradle compileSdkVersion
         minSdk = 21
+
+        experimentalProperties["android.experimental.kmp.enableAndroidResources"] = true
 
         withHostTestBuilder {
         }
@@ -387,6 +389,7 @@ kotlin {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
+                implementation(compose.materialIconsExtended)
                 implementation(compose.ui)
                 implementation(compose.components.resources)
                 implementation("io.github.kashif-mehmood-km:camerak:0.0.6")
