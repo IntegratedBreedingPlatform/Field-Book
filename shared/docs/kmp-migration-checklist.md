@@ -191,7 +191,8 @@
 | Year                             | :white_check_mark: | :white_check_mark: |
 | Month                            | :white_check_mark: | :white_check_mark: |
 | Share image                      | :white_check_mark: |                    |
-| Heatmap                          |                    |                    |
+| Heatmap                          | :white_check_mark: | :white_check_mark: |
+| Heatmap/DatePicker               | :white_check_mark: |                    |
 |                                  |                    |                    |
 | ...                              |                    |                    |
 |                                  |                    |                    |
