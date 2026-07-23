@@ -139,7 +139,8 @@ fun ConfigScreen(
         ),
         ConfigItem(
             title = Res.string.settings_statistics,
-            icon = Res.drawable.ic_nav_drawer_statistics
+            icon = Res.drawable.ic_nav_drawer_statistics,
+            destination = KmpHostScreenType.STATISTICS
         ),
         ConfigItem(
             title = Res.string.about_title,

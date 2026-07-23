@@ -39,6 +39,7 @@ import com.fieldbook.shared.screens.preferences.LanguageScreen
 import com.fieldbook.shared.screens.preferences.PreferencesScreen
 import com.fieldbook.shared.screens.preferences.StorageDefinerScreen
 import com.fieldbook.shared.screens.preferences.StoragePreferencesScreen
+import com.fieldbook.shared.screens.statistics.StatisticsScreen
 import com.fieldbook.shared.screens.trait.TraitEditorScreen
 import kotlinx.coroutines.launch
 
@@ -226,6 +227,13 @@ fun KmpApp(
                 ExportScreen(
                     fieldIds = emptyList(),
                     onBack = { navController.navigateBackOrExit(onExit) },
+                )
+            }
+
+            composable(KmpHostScreenType.STATISTICS.route) {
+                StatisticsScreen(
+                    onBack = { navController.navigateBackOrExit(onExit) },
+                    onSnackbarMessage = onSnackbarMessage,
                 )
             }
 
