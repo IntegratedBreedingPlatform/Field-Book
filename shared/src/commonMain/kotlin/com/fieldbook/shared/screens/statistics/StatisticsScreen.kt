@@ -71,6 +71,7 @@ import com.fieldbook.shared.generated.resources.Res
 import com.fieldbook.shared.generated.resources.dialog_back
 import com.fieldbook.shared.generated.resources.dialog_ok
 import com.fieldbook.shared.generated.resources.ic_stats_busiest
+import com.fieldbook.shared.generated.resources.ic_stats_calendar
 import com.fieldbook.shared.generated.resources.ic_stats_export
 import com.fieldbook.shared.generated.resources.ic_stats_field
 import com.fieldbook.shared.generated.resources.ic_stats_most_obs
@@ -88,6 +89,7 @@ import com.fieldbook.shared.generated.resources.stat_title_hours
 import com.fieldbook.shared.generated.resources.stat_title_most
 import com.fieldbook.shared.generated.resources.stat_title_people
 import com.fieldbook.shared.generated.resources.stat_title_photos
+import com.fieldbook.shared.generated.resources.stats_heatmap
 import com.fieldbook.shared.generated.resources.stats_tab_layout_month
 import com.fieldbook.shared.generated.resources.stats_tab_layout_total
 import com.fieldbook.shared.generated.resources.stats_tab_layout_year
@@ -116,6 +118,17 @@ fun StatisticsScreen(
         viewModel.load()
     }
 
+    if (uiState.showHeatmap) {
+        StatisticsHeatmapScreen(
+            heatmap = uiState.heatmap,
+            onBack = viewModel::closeHeatmap,
+            onToggleCounts = viewModel::toggleHeatmapCounts,
+            onRangeSelected = viewModel::setHeatmapRange,
+            onSnackbarMessage = onSnackbarMessage,
+        )
+        return
+    }
+
     selectedDetails?.let { details ->
         StatisticsDetailsDialog(
             details = details,
@@ -127,6 +140,15 @@ fun StatisticsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.settings_statistics)) },
+                actions = {
+                    IconButton(onClick = viewModel::openHeatmap) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_stats_calendar),
+                            contentDescription = stringResource(Res.string.stats_heatmap),
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

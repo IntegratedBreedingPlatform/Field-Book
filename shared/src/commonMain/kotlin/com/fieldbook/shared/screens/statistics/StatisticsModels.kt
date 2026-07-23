@@ -2,11 +2,14 @@
 
 package com.fieldbook.shared.screens.statistics
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.ExperimentalTime
@@ -42,6 +45,33 @@ data class StatisticsCardDetails(
     val title: String = "",
     val lines: List<String> = emptyList(),
     val message: String? = null,
+)
+
+data class StatisticsHeatmapState(
+    val dayCounts: Map<LocalDate, Int> = emptyMap(),
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null,
+    val availableStartDate: LocalDate? = null,
+    val availableEndDate: LocalDate? = null,
+    val firstObservationDateInRange: LocalDate? = null,
+    val lastObservationDateInRange: LocalDate? = null,
+    val months: List<StatisticsHeatmapMonth> = emptyList(),
+    val showCounts: Boolean = false,
+) {
+    val hasObservations: Boolean = dayCounts.isNotEmpty()
+}
+
+data class StatisticsHeatmapMonth(
+    val year: Int,
+    val monthNumber: Int,
+    val title: String,
+    val days: List<StatisticsHeatmapDay>,
+)
+
+data class StatisticsHeatmapDay(
+    val date: LocalDate?,
+    val count: Int = 0,
+    val inSelectedRange: Boolean = false,
 )
 
 enum class StatisticsMode { TOTAL, YEAR, MONTH }
@@ -106,6 +136,54 @@ fun buildStatisticsSections(
                 )
             }
     }
+}
+
+fun buildStatisticsHeatmap(
+    observations: List<StatisticsObservation>,
+    startDate: LocalDate? = null,
+    endDate: LocalDate? = null,
+    showCounts: Boolean = false,
+): StatisticsHeatmapState {
+    val dateCounts = observations
+        .mapNotNull { observation -> parseFieldBookInstant(observation.timestamp)?.toLocalDate() }
+        .groupingBy { it }
+        .eachCount()
+
+    if (dateCounts.isEmpty()) {
+        return StatisticsHeatmapState(showCounts = showCounts)
+    }
+
+    val availableStartDate = dateCounts.keys.minOrNull()
+    val availableEndDate = dateCounts.keys.maxOrNull()
+    val selectedStart = startDate ?: availableStartDate
+    val selectedEnd = endDate ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val safeStart = selectedStart?.coerceAtMost(selectedEnd)
+    val safeEnd = selectedEnd.coerceAtLeast(selectedStart ?: selectedEnd)
+    val firstMonth = availableStartDate?.firstDayOfMonth()
+    val lastMonth = maxOf(safeEnd.firstDayOfMonth(), availableEndDate?.firstDayOfMonth() ?: safeEnd.firstDayOfMonth())
+    val observationDatesInRange = if (safeStart != null) {
+        dateCounts.keys.filter { date -> date in safeStart..safeEnd }
+    } else {
+        emptyList()
+    }
+
+    return StatisticsHeatmapState(
+        dayCounts = dateCounts,
+        startDate = safeStart,
+        endDate = safeEnd,
+        availableStartDate = availableStartDate,
+        availableEndDate = availableEndDate,
+        firstObservationDateInRange = observationDatesInRange.minOrNull(),
+        lastObservationDateInRange = observationDatesInRange.maxOrNull(),
+        months = if (firstMonth != null) buildHeatmapMonths(
+            firstMonth = firstMonth,
+            lastMonth = lastMonth,
+            dateCounts = dateCounts,
+            startDate = safeStart,
+            endDate = safeEnd,
+        ) else emptyList(),
+        showCounts = showCounts,
+    )
 }
 
 private fun buildStatisticsSection(
@@ -222,7 +300,7 @@ private fun activeHours(instants: List<Instant>): String {
     return (totalSeconds / 3600.0).toStringWithTwoDecimals()
 }
 
-private fun parseFieldBookInstant(value: String?): Instant? {
+internal fun parseFieldBookInstant(value: String?): Instant? {
     val trimmed = value?.trim().orEmpty()
     if (trimmed.isEmpty()) return null
 
@@ -233,6 +311,69 @@ private fun parseFieldBookInstant(value: String?): Instant? {
     return runCatching { Instant.parse(normalized) }.getOrNull()
         ?: runCatching { Instant.parse(withoutFraction) }.getOrNull()
         ?: runCatching { LocalDateTime.parse(localDateTime).toInstant(TimeZone.currentSystemDefault()) }.getOrNull()
+}
+
+private fun Instant.toLocalDate(): LocalDate =
+    toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+private fun LocalDate.firstDayOfMonth(): LocalDate = LocalDate(year, monthNumber, 1)
+
+private fun LocalDate.coerceAtMost(maximumValue: LocalDate): LocalDate =
+    if (this > maximumValue) maximumValue else this
+
+private fun LocalDate.coerceAtLeast(minimumValue: LocalDate): LocalDate =
+    if (this < minimumValue) minimumValue else this
+
+private fun buildHeatmapMonths(
+    firstMonth: LocalDate,
+    lastMonth: LocalDate,
+    dateCounts: Map<LocalDate, Int>,
+    startDate: LocalDate?,
+    endDate: LocalDate?,
+): List<StatisticsHeatmapMonth> {
+    val months = mutableListOf<StatisticsHeatmapMonth>()
+    var cursor = firstMonth
+    while (cursor <= lastMonth) {
+        months += buildHeatmapMonth(cursor, dateCounts, startDate, endDate)
+        cursor = cursor.plus(DatePeriod(months = 1))
+    }
+    return months
+}
+
+private fun buildHeatmapMonth(
+    monthDate: LocalDate,
+    dateCounts: Map<LocalDate, Int>,
+    startDate: LocalDate?,
+    endDate: LocalDate?,
+): StatisticsHeatmapMonth {
+    val firstDayOffset = monthDate.dayOfWeek.ordinal
+    val nextMonth = monthDate.plus(DatePeriod(months = 1))
+    val daysInMonth: Int = (nextMonth.toEpochDays() - monthDate.toEpochDays()).toInt()
+    val cells = mutableListOf<StatisticsHeatmapDay>()
+
+    repeat(firstDayOffset) {
+        cells += StatisticsHeatmapDay(date = null)
+    }
+
+    repeat(daysInMonth) { index ->
+        val date = monthDate.plus(DatePeriod(days = index))
+        cells += StatisticsHeatmapDay(
+            date = date,
+            count = dateCounts[date] ?: 0,
+            inSelectedRange = startDate != null && endDate != null && date in startDate..endDate,
+        )
+    }
+
+    while (cells.size % 7 != 0) {
+        cells += StatisticsHeatmapDay(date = null)
+    }
+
+    return StatisticsHeatmapMonth(
+        year = monthDate.year,
+        monthNumber = monthDate.monthNumber,
+        title = monthTitle("${monthDate.year}-${monthDate.monthNumber.toString().padStart(2, '0')}"),
+        days = cells,
+    )
 }
 
 private fun LocalDate.toDisplayDate(): String =
