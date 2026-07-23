@@ -187,6 +187,11 @@
 | Media keycode events             |                    |                    |
 |                                  |                    |                    |
 | **Statistics**                   |                    |                    |
+| Total                            | :white_check_mark: | :white_check_mark: |
+| Year                             | :white_check_mark: | :white_check_mark: |
+| Month                            | :white_check_mark: | :white_check_mark: |
+| Share image                      | :white_check_mark: |                    |
+| Heatmap                          |                    |                    |
 |                                  |                    |                    |
 | ...                              |                    |                    |
 |                                  |                    |                    |

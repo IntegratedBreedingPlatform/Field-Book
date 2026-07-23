@@ -457,6 +457,7 @@ kotlin {
                 // KMP dependencies declared in commonMain.
                 implementation(libs.ktor.client.darwin)
                 implementation("app.cash.sqldelight:native-driver:2.1.0")
+                implementation(libs.skiko)
             }
         }
     }

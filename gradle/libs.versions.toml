@@ -19,6 +19,7 @@ compass = "1.2.4"
 ksensor = "2.0.4"
 kmp-zip = "0.8.0"
 vico = "3.2.3"
+skiko = "0.8.18" # aligned with Compose Multiplatform 1.7.3
 
 [libraries]
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatform-settings" }
@@ -49,6 +50,7 @@ ksensor = { module = "io.github.shadmanadman:KSensor", version.ref = "ksensor" }
 kmp-zip = { module = "no.synth:kmp-zip", version.ref = "kmp-zip" }
 vico-compose = { module = "com.patrykandpatrick.vico:compose", version.ref = "vico" }
 vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref = "vico" }
+skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
 
 [plugins]
 app-cash-sqldelight = { id = "app.cash.sqldelight", version = "2.1.0" }

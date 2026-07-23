@@ -6,6 +6,8 @@ import com.fieldbook.shared.generated.resources.dir_database
 import com.fieldbook.shared.generated.resources.dir_field_export
 import com.fieldbook.shared.generated.resources.dir_field_import
 import com.fieldbook.shared.generated.resources.dir_geonav
+import com.fieldbook.shared.generated.resources.dir_media_audio
+import com.fieldbook.shared.generated.resources.dir_media_photos
 import com.fieldbook.shared.generated.resources.dir_plot_data
 import com.fieldbook.shared.generated.resources.dir_preferences
 import com.fieldbook.shared.generated.resources.dir_resources
@@ -27,6 +29,8 @@ fun defaultStorageDirectoryNames(): List<String> = runBlocking {
         getString(Res.string.dir_trait),
         getString(Res.string.dir_updates),
         getString(Res.string.dir_preferences),
+        getString(Res.string.dir_media_photos),
+        getString(Res.string.dir_media_audio),
     )
 }
 
