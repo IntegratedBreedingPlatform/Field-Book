@@ -396,7 +396,7 @@ private fun TraitColumnChart(bars: List<ChartBar>) {
             },
             itemPlacer = remember { HorizontalAxis.ItemPlacer.aligned(spacing = { 1 }) },
         ),
-        getXStep = { _, _, _ -> 1.0 },
+        getXStep = { _ -> 1.0 },
     )
     val model = remember(bars) {
         CartesianChartModel(

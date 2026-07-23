@@ -18,7 +18,7 @@ lazytable = "1.10.0"
 compass = "1.2.4"
 ksensor = "2.0.4"
 kmp-zip = "0.8.0"
-vico = "3.2.3"
+vico = "3.1.0"
 
 [libraries]
 multiplatform-settings = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatform-settings" }
