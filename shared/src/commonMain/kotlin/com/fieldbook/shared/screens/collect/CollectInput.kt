@@ -2,11 +2,24 @@ package com.fieldbook.shared.screens.collect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -14,7 +27,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.preferences.PreferenceKeys
-import com.fieldbook.shared.screens.collect.traits.*
+import com.fieldbook.shared.screens.collect.traits.AngleTrait
+import com.fieldbook.shared.screens.collect.traits.AudioTrait
+import com.fieldbook.shared.screens.collect.traits.BooleanTrait
+import com.fieldbook.shared.screens.collect.traits.CategoricalTrait
+import com.fieldbook.shared.screens.collect.traits.CounterTrait
+import com.fieldbook.shared.screens.collect.traits.DateTrait
+import com.fieldbook.shared.screens.collect.traits.DiseaseRatingTrait
+import com.fieldbook.shared.screens.collect.traits.LocationTrait
+import com.fieldbook.shared.screens.collect.traits.NumericTrait
+import com.fieldbook.shared.screens.collect.traits.PercentTrait
+import com.fieldbook.shared.screens.collect.traits.PhotoTrait
+import com.fieldbook.shared.screens.collect.traits.TextTrait
 import com.fieldbook.shared.theme.AppColors
 import com.fieldbook.shared.traits.Formats
 import com.fieldbook.shared.utilities.CategoryJsonUtil
@@ -27,17 +51,18 @@ fun CollectInput(
     modifier: Modifier = Modifier,
     onExpandPhotoTrait: () -> Unit = {},
 ) {
-    val trait = controller.traits.getOrNull(controller.currentTraitIndex)
-    val values = trait?.let { controller.traitValues[it.id] } ?: emptyList()
+    val state by controller.uiState.collectAsState()
+    val trait = state.traits.getOrNull(state.currentTraitIndex)
+    val values = trait?.id?.let { state.traitValues[it] } ?: emptyList()
     val value = values.firstOrNull() ?: ""
-    val currentPlotId = controller.units
-        .getOrNull(controller.currentUnitIndex)
+    val currentPlotId = state.units
+        .getOrNull(state.currentUnitIndex)
         ?.observation_unit_db_id
     val currentTraitId = trait?.id
 
     var isEdited by remember(
-        controller.currentTraitIndex,
-        controller.currentUnitIndex
+        state.currentTraitIndex,
+        state.currentUnitIndex
     ) { mutableStateOf(false) }
 
     val fontWeight = if (!isEdited) FontWeight.Bold else FontWeight.Normal

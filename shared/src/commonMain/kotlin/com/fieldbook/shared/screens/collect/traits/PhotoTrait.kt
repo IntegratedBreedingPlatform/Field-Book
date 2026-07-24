@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -86,9 +87,11 @@ fun PhotoTrait(
     onExpandRequest: () -> Unit = {},
     onCollapseRequest: () -> Unit = {},
 ) {
+    val state by controller.uiState.collectAsState()
+
     fun currentTraitName(): String {
-        return controller.traits
-            .getOrNull(controller.currentTraitIndex)
+        return state.traits
+            .getOrNull(state.currentTraitIndex)
             ?.name
             ?.takeIf { it.isNotBlank() }
             ?: PHOTO_DIRECTORY_NAME
@@ -103,7 +106,7 @@ fun PhotoTrait(
     }
 
     fun buildPhotoFileName(): String {
-        val plotId = controller.units.getOrNull(controller.currentUnitIndex)?.observation_unit_db_id
+        val plotId = state.units.getOrNull(state.currentUnitIndex)?.observation_unit_db_id
             ?.takeIf { it.isNotBlank() }
             ?: "photo"
         val traitName = sanitizeFileName(currentTraitName())

@@ -1,9 +1,9 @@
 package com.fieldbook.shared.screens.collect
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +26,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,11 +95,12 @@ private enum class InfoBarDialogTab(val title: StringResource) {
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) {
+    val state by controller.uiState.collectAsState()
     val settings = remember { Settings() }
     val attributeRepository = remember { ObservationUnitAttributeRepository() }
     val propertyRepository = remember { ObservationUnitPropertyRepository() }
     val traitRepository = remember { TraitRepository() }
-    val unit = controller.units.getOrNull(controller.currentUnitIndex)
+    val unit = state.units.getOrNull(state.currentUnitIndex)
     val hidePrefixEnabled = settings.getBoolean(PreferenceKeys.HIDE_INFOBAR_PREFIX, false)
     var infoBarCount by remember {
         mutableStateOf(settings.getInt(PreferenceKeys.INFOBAR_NUMBER, 3).coerceIn(1, 20))
@@ -188,6 +190,7 @@ fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) 
             selection = selection,
             value = resolveInfoBarValue(
                 controller = controller,
+                state = state,
                 selection = selection,
                 fieldNameLabel = fieldNameLabel,
                 fieldNameValue = fieldNameValue,
@@ -470,6 +473,7 @@ private fun persistInfoBarSelection(
 
 private fun resolveInfoBarValue(
     controller: CollectScreenController,
+    state: CollectUiState,
     selection: InfoBarSelection,
     fieldNameLabel: String,
     fieldNameValue: String,
@@ -479,7 +483,7 @@ private fun resolveInfoBarValue(
     showCategoryLabels: Boolean,
 ): String {
     selection.traitId?.let { traitId ->
-        val rawValue = controller.traitValues[traitId]?.lastOrNull()
+        val rawValue = state.traitValues[traitId]?.lastOrNull()
         if (rawValue.isNullOrBlank()) {
             return noDataLabel
         }
@@ -503,17 +507,18 @@ private fun resolveInfoBarValue(
 
     return attributeValues[selection.label]
         ?.takeIf { it.isNotBlank() }
-        ?: resolveRangeFallback(controller, selection.label).ifBlank { noDataLabel }
+        ?: resolveRangeFallback(controller, state, selection.label).ifBlank { noDataLabel }
 }
 
 private fun resolveRangeFallback(
     controller: CollectScreenController,
+    state: CollectUiState,
     label: String,
 ): String {
     return when (label) {
-        controller.uniqueId -> controller.cRange.uniqueId
-        controller.primaryId -> controller.cRange.primaryId
-        controller.secondaryId -> controller.cRange.secondaryId
+        controller.uniqueId -> state.cRange.uniqueId
+        controller.primaryId -> state.cRange.primaryId
+        controller.secondaryId -> state.cRange.secondaryId
         else -> ""
     }
 }

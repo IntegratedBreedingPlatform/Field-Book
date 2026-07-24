@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,11 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.generated.resources.Res
+import com.fieldbook.shared.generated.resources.trait_audio
 import com.fieldbook.shared.generated.resources.trait_audio_button_content_description
 import com.fieldbook.shared.generated.resources.trait_audio_duration
 import com.fieldbook.shared.generated.resources.trait_audio_file_size
 import com.fieldbook.shared.generated.resources.trait_audio_placeholder_filename
-import com.fieldbook.shared.generated.resources.trait_audio
 import com.fieldbook.shared.generated.resources.trait_audio_play
 import com.fieldbook.shared.generated.resources.trait_audio_stop
 import com.fieldbook.shared.generated.resources.trait_audio_timestamp
@@ -58,21 +59,22 @@ fun AudioTrait(
     controller: CollectScreenController,
     modifier: Modifier = Modifier,
 ) {
+    val state by controller.uiState.collectAsState()
     val audioController = remember { PlatformAudioController() }
     var buttonState by remember { mutableStateOf(AudioButtonState.WAITING_FOR_RECORDING) }
     var recordedUri by remember { mutableStateOf(value.takeUnless { it == "NA" }.orEmpty()) }
     var metadata by remember { mutableStateOf<AudioTraitMetadata?>(null) }
 
     fun currentTraitName(): String {
-        return controller.traits
-            .getOrNull(controller.currentTraitIndex)
+        return state.traits
+            .getOrNull(state.currentTraitIndex)
             ?.name
             ?.takeIf { it.isNotBlank() }
             ?: "audio"
     }
 
     fun buildAudioFileName(): String {
-        val plotId = controller.units.getOrNull(controller.currentUnitIndex)?.observation_unit_db_id
+        val plotId = state.units.getOrNull(state.currentUnitIndex)?.observation_unit_db_id
             ?.takeIf { it.isNotBlank() }
             ?: "audio"
         val traitName = sanitizeFileName(currentTraitName())
