@@ -16,6 +16,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.fieldbook.shared.screens.AboutScreen
 import com.fieldbook.shared.screens.ConfigScreen
 import com.fieldbook.shared.screens.ScannerScreen
@@ -101,6 +102,8 @@ fun KmpApp(
                 FieldEditorScreen(
                     onBack = { navController.navigateBackOrExit(onExit) },
                     onNavigateToBrapi = { navController.navigateTo(KmpHostScreenType.FIELD_BRAPI) },
+                    onNavigateToCollect = { navController.navigateTo(KmpHostScreenType.COLLECT) },
+                    onNavigateToExport = { fieldId -> navController.navigate(KmpRoute.ExportField(fieldId)) },
                     onSnackbarMessage = onSnackbarMessage,
                 )
             }
@@ -229,6 +232,14 @@ fun KmpApp(
                 )
             }
 
+            composable<KmpRoute.ExportField> { backStackEntry ->
+                val fieldId = backStackEntry.toRoute<KmpRoute.ExportField>().fieldId
+                ExportScreen(
+                    fieldIds = listOf(fieldId),
+                    onBack = { navController.navigateBackOrExit(onExit) },
+                )
+            }
+
             composable(KmpHostScreenType.ABOUT.route) {
                 AboutScreen(
                     onBack = { navController.navigateBackOrExit(onExit) },
@@ -243,9 +254,6 @@ fun KmpApp(
         }
     }
 }
-
-private val KmpHostScreenType.route: String
-    get() = value
 
 private fun NavHostController.navigateTo(
     screen: KmpHostScreenType,

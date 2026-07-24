@@ -27,8 +27,8 @@
 | **Field Details**                |                    |                    |
 | Edit field                       | :white_check_mark: | :white_check_mark: |
 | Delete field                     | :white_check_mark: | :white_check_mark: |
-| Collect                          |                    |                    |
-| Export                           |                    |                    |
+| Collect                          | :white_check_mark: | :white_check_mark: |
+| Export                           | :white_check_mark: | :white_check_mark: |
 | Data                             | :white_check_mark: |                    |
 |                                  |                    |                    |
 | ...                              |                    |                    |
@@ -116,7 +116,7 @@
 |                                  |                    |                    |
 | **Settings/Appearance**          |                    |                    |
 | Theme                            |                    |                    |
-| Language                         |                    |                    |
+| Language                         | :white_check_mark: |                    |
 | Toolbar actions                  | :white_check_mark: | :white_check_mark: |
 | Number of infobars               | :white_check_mark: | :white_check_mark: |
 | Hide infobar prefix              | :white_check_mark: | :white_check_mark: |
