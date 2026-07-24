@@ -74,7 +74,7 @@
 |                                  |                    |                    |
 | **Collect**                      |                    |                    |
 | Switch trait                     | :white_check_mark: | :white_check_mark: |
-| Go to trait                      |                    |                    |
+| Go to trait                      | :white_check_mark: | :white_check_mark: |
 | Switch obs unit                  | :white_check_mark: | :white_check_mark: |
 | Quick goto obs unit              |                    |                    |
 | Trait types                      | See Trait formats  | See Trait formats  |
