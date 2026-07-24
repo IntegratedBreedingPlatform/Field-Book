@@ -1,5 +1,8 @@
 package com.fieldbook.shared.screens.collect
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -99,8 +102,10 @@ class CollectScreenViewModel(
     private var restoredTraitSelection = false
     private val suppressedDefaultEntries = mutableSetOf<String>()
 
-    val primaryId = settings.getString(GeneralKeys.PRIMARY_NAME.key, "")
-    val secondaryId = settings.getString(GeneralKeys.SECONDARY_NAME.key, "")
+    var primaryId by mutableStateOf(settings.getString(GeneralKeys.PRIMARY_NAME.key, ""))
+        private set
+    var secondaryId by mutableStateOf(settings.getString(GeneralKeys.SECONDARY_NAME.key, ""))
+        private set
     val uniqueId = settings.getString(GeneralKeys.UNIQUE_NAME.key, "")
 
     init {
@@ -229,6 +234,57 @@ class CollectScreenViewModel(
         if (unitIndex < 0) return false
 
         return updateCurrentUnitIndex(unitIndex)
+    }
+
+    fun moveToRange(primaryValue: String, secondaryValue: String): Boolean {
+        val primary = primaryValue.trim()
+        val secondary = secondaryValue.trim()
+        if (primary.isEmpty() && secondary.isEmpty()) return false
+        if (!validateCurrentTraitValue()) return false
+
+        val unitIndex = rangeID.indexOfFirst { rangeDbId ->
+            val range = try {
+                observationUnitPropertyRepository.getRangeFromId(
+                    id = rangeDbId.toLong(),
+                    firstName = primaryId,
+                    secondName = secondaryId,
+                    uniqueName = uniqueId
+                )
+            } catch (_: Exception) {
+                return@indexOfFirst false
+            }
+
+            when {
+                primary.isNotEmpty() && secondary.isNotEmpty() ->
+                    range.primaryId == primary && range.secondaryId == secondary
+                primary.isNotEmpty() -> range.primaryId == primary
+                else -> range.secondaryId == secondary
+            }
+        }
+
+        if (unitIndex < 0) return false
+
+        return updateCurrentUnitIndex(unitIndex)
+    }
+
+    fun updatePrimaryAttribute(label: String) {
+        val normalized = label.trim()
+        if (normalized.isEmpty() || normalized == primaryId) return
+
+        primaryId = normalized
+        settings.putString(GeneralKeys.PRIMARY_NAME.key, normalized)
+        rangeID.getOrNull(currentUnitIndex)?.let(::updateCurrentRange)
+        persistCurrentSelection()
+    }
+
+    fun updateSecondaryAttribute(label: String) {
+        val normalized = label.trim()
+        if (normalized.isEmpty() || normalized == secondaryId) return
+
+        secondaryId = normalized
+        settings.putString(GeneralKeys.SECONDARY_NAME.key, normalized)
+        rangeID.getOrNull(currentUnitIndex)?.let(::updateCurrentRange)
+        persistCurrentSelection()
     }
 
     private fun loadTraitValues() {

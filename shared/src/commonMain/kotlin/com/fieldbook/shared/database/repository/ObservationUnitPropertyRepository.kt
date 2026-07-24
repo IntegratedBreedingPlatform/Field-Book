@@ -32,8 +32,12 @@ class ObservationUnitPropertyRepository(
         secondName: String,
         uniqueName: String
     ): RangeObject {
+        if (firstName.isBlank() || secondName.isBlank() || uniqueName.isBlank()) {
+            return RangeObject("", "", "")
+        }
+
         val sql =
-            "SELECT $firstName, $secondName, $uniqueName FROM $sObservationUnitPropertyViewName WHERE id = ? LIMIT 1"
+            "SELECT ${sqlIdentifier(firstName)}, ${sqlIdentifier(secondName)}, ${sqlIdentifier(uniqueName)} FROM $sObservationUnitPropertyViewName WHERE id = ? LIMIT 1"
 
         val result: QueryResult<RangeObject> = driver.executeQuery(
             identifier = null,
