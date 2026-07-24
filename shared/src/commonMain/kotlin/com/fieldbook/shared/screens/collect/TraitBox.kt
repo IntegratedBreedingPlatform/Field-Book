@@ -43,13 +43,14 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TraitBox(
-    viewModel: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     modifier: Modifier = Modifier
 ) {
     val settings = remember { Settings() }
     val showTraitProgressBar = settings.getBoolean(PreferenceKeys.TRAITS_PROGRESS_BAR, true)
     var showTraitPickerDialog by remember { mutableStateOf(false) }
-    val traitPickerEnabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty()
+    val traitPickerEnabled = !state.collectInteractionLocked && state.traits.isNotEmpty()
 
     Column(modifier = modifier.fillMaxWidth().padding(16.dp)) {
         Row(
@@ -59,7 +60,7 @@ fun TraitBox(
         ) {
             IconButton(
                 onClick = { viewModel.goToPreviousTrait() },
-                enabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty(),
+                enabled = !state.collectInteractionLocked && state.traits.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -69,7 +70,7 @@ fun TraitBox(
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-            val trait = viewModel.traits.getOrNull(viewModel.currentTraitIndex)
+            val trait = state.traits.getOrNull(state.currentTraitIndex)
             Text(
                 trait?.name ?: "-",
                 style = MaterialTheme.typography.titleLarge,
@@ -85,7 +86,7 @@ fun TraitBox(
             )
             IconButton(
                 onClick = { viewModel.goToNextTrait() },
-                enabled = !viewModel.collectInteractionLocked && viewModel.traits.isNotEmpty(),
+                enabled = !state.collectInteractionLocked && state.traits.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -97,7 +98,7 @@ fun TraitBox(
                 )
             }
         }
-        val trait = viewModel.traits.getOrNull(viewModel.currentTraitIndex)
+        val trait = state.traits.getOrNull(state.currentTraitIndex)
         val traitDetails = trait?.details?.takeIf { it.isNotBlank() }
         if (traitDetails != null) {
             Spacer(Modifier.height(8.dp))
@@ -115,7 +116,7 @@ fun TraitBox(
             Spacer(Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 StatusBar(
-                    viewModel = viewModel,
+                    state = state,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -124,6 +125,7 @@ fun TraitBox(
 
     if (showTraitPickerDialog) {
         TraitPickerDialog(
+            state = state,
             viewModel = viewModel,
             onDismiss = { showTraitPickerDialog = false }
         )
@@ -132,7 +134,8 @@ fun TraitBox(
 
 @Composable
 private fun TraitPickerDialog(
-    viewModel: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -144,8 +147,8 @@ private fun TraitPickerDialog(
                     .fillMaxWidth()
                     .heightIn(max = 420.dp)
             ) {
-                itemsIndexed(viewModel.traits) { index, trait ->
-                    val selected = index == viewModel.currentTraitIndex
+                itemsIndexed(state.traits) { index, trait ->
+                    val selected = index == state.currentTraitIndex
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

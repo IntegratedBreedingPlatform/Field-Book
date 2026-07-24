@@ -2,11 +2,23 @@ package com.fieldbook.shared.screens.collect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -14,7 +26,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fieldbook.shared.preferences.PreferenceKeys
-import com.fieldbook.shared.screens.collect.traits.*
+import com.fieldbook.shared.screens.collect.traits.AngleTrait
+import com.fieldbook.shared.screens.collect.traits.AudioTrait
+import com.fieldbook.shared.screens.collect.traits.BooleanTrait
+import com.fieldbook.shared.screens.collect.traits.CategoricalTrait
+import com.fieldbook.shared.screens.collect.traits.CounterTrait
+import com.fieldbook.shared.screens.collect.traits.DateTrait
+import com.fieldbook.shared.screens.collect.traits.DiseaseRatingTrait
+import com.fieldbook.shared.screens.collect.traits.LocationTrait
+import com.fieldbook.shared.screens.collect.traits.NumericTrait
+import com.fieldbook.shared.screens.collect.traits.PercentTrait
+import com.fieldbook.shared.screens.collect.traits.PhotoTrait
+import com.fieldbook.shared.screens.collect.traits.TextTrait
 import com.fieldbook.shared.theme.AppColors
 import com.fieldbook.shared.traits.Formats
 import com.fieldbook.shared.utilities.CategoryJsonUtil
@@ -23,21 +46,22 @@ import com.russhwolf.settings.Settings
 
 @Composable
 fun CollectInput(
-    controller: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     modifier: Modifier = Modifier,
     onExpandPhotoTrait: () -> Unit = {},
 ) {
-    val trait = controller.traits.getOrNull(controller.currentTraitIndex)
-    val values = trait?.let { controller.traitValues[it.id] } ?: emptyList()
+    val trait = state.traits.getOrNull(state.currentTraitIndex)
+    val values = trait?.id?.let { state.traitValues[it] } ?: emptyList()
     val value = values.firstOrNull() ?: ""
-    val currentPlotId = controller.units
-        .getOrNull(controller.currentUnitIndex)
+    val currentPlotId = state.units
+        .getOrNull(state.currentUnitIndex)
         ?.observation_unit_db_id
     val currentTraitId = trait?.id
 
     var isEdited by remember(
-        controller.currentTraitIndex,
-        controller.currentUnitIndex
+        state.currentTraitIndex,
+        state.currentUnitIndex
     ) { mutableStateOf(false) }
 
     val fontWeight = if (!isEdited) FontWeight.Bold else FontWeight.Normal
@@ -50,11 +74,11 @@ fun CollectInput(
     val fontColor = when {
         isEdited -> AppColors.fb_color_text_dark.color
         isCounterPlaceholder -> AppColors.fb_color_text_dark.color
-        else -> controller.getDisplayColor()
+        else -> viewModel.getDisplayColor()
     }
     val usesLazyVerticalInput =
         formatEnum == Formats.CATEGORICAL || formatEnum == Formats.MULTI_CATEGORICAL
-    val isCurrentObservationLocked = controller.isCurrentObservationLocked()
+    val isCurrentObservationLocked = viewModel.isCurrentObservationLocked()
     val labelValPref = remember { Settings() }
         .getString(PreferenceKeys.LABELVAL_CUSTOMIZE, "value")
     val showLabel = labelValPref == "label"
@@ -100,7 +124,7 @@ fun CollectInput(
             }
 
             Formats.NUMERIC -> {
-                val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
+                val shouldUseDefault = trait?.id?.let(viewModel::shouldUseDefaultValue) == true
                 if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
             }
 
@@ -115,7 +139,7 @@ fun CollectInput(
             }
 
             Formats.BOOLEAN -> {
-                val shouldUseDefault = trait?.id?.let(controller::shouldUseDefaultValue) == true
+                val shouldUseDefault = trait?.id?.let(viewModel::shouldUseDefaultValue) == true
                 val raw = if (value.isEmpty() && shouldUseDefault) trait?.defaultValue.orEmpty() else value
                 when {
                     raw.equals("true", ignoreCase = true) -> "TRUE"
@@ -137,7 +161,7 @@ fun CollectInput(
         modifier = modifier.fillMaxWidth(),
     ) {
         androidx.compose.runtime.LaunchedEffect(currentPlotId, currentTraitId) {
-            controller.ensureCurrentTraitDefaultValueApplied()
+            viewModel.ensureCurrentTraitDefaultValueApplied()
         }
 
         Spacer(Modifier.height(16.dp))
@@ -148,7 +172,7 @@ fun CollectInput(
                     EditableValueText(
                         value = value,
                         onValueChange = {
-                            controller.updateCurrentTraitValue(it)
+                            viewModel.updateCurrentTraitValue(it)
                             isEdited = true
                         },
                         modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -162,7 +186,7 @@ fun CollectInput(
                 if (isCurrentObservationLocked) {
                     LockedInputOverlay(
                         modifier = Modifier.matchParentSize(),
-                        onClick = controller::showCurrentDataLockMessage
+                        onClick = viewModel::showCurrentDataLockMessage
                     )
                 }
             }
@@ -179,7 +203,8 @@ fun CollectInput(
                 ) {
                     key(currentPlotId, currentTraitId) {
                         TraitInputHost(
-                            controller = controller,
+                            state = state,
+                            viewModel = viewModel,
                             trait = trait,
                             values = values,
                             onEdited = { isEdited = true },
@@ -191,7 +216,7 @@ fun CollectInput(
                 if (isCurrentObservationLocked) {
                     LockedInputOverlay(
                         modifier = Modifier.matchParentSize(),
-                        onClick = controller::showCurrentDataLockMessage
+                        onClick = viewModel::showCurrentDataLockMessage
                     )
                 }
             }
@@ -209,7 +234,8 @@ fun CollectInput(
                 ) {
                     key(currentPlotId, currentTraitId) {
                         TraitInputHost(
-                            controller = controller,
+                            state = state,
+                            viewModel = viewModel,
                             trait = trait,
                             values = values,
                             onEdited = { isEdited = true },
@@ -221,7 +247,7 @@ fun CollectInput(
                 if (isCurrentObservationLocked) {
                     LockedInputOverlay(
                         modifier = Modifier.matchParentSize(),
-                        onClick = controller::showCurrentDataLockMessage
+                        onClick = viewModel::showCurrentDataLockMessage
                     )
                 }
             }
@@ -252,7 +278,8 @@ fun CollectInput(
                 ) {
                     key(currentPlotId, currentTraitId) {
                         TraitInputHost(
-                            controller = controller,
+                            state = state,
+                            viewModel = viewModel,
                             trait = trait,
                             values = values,
                             onEdited = { isEdited = true },
@@ -264,7 +291,7 @@ fun CollectInput(
                 if (isCurrentObservationLocked) {
                     LockedInputOverlay(
                         modifier = Modifier.matchParentSize(),
-                        onClick = controller::showCurrentDataLockMessage
+                        onClick = viewModel::showCurrentDataLockMessage
                     )
                 }
             }
@@ -306,7 +333,8 @@ private fun TraitInputContainer(
 
 @Composable
 fun TraitInputHost(
-    controller: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     trait: com.fieldbook.shared.database.models.TraitObject?,
     values: List<String>,
     onEdited: () -> Unit,
@@ -323,9 +351,9 @@ fun TraitInputHost(
         Formats.NUMERIC -> NumericTrait(
             value = value,
             defaultValue = trait?.defaultValue,
-            useDefaultValue = trait?.id?.let(controller::shouldUseDefaultValue) == true,
+            useDefaultValue = trait?.id?.let(viewModel::shouldUseDefaultValue) == true,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier
@@ -337,7 +365,7 @@ fun TraitInputHost(
         Formats.ANGLE -> AngleTrait(
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
@@ -347,7 +375,7 @@ fun TraitInputHost(
             trait = trait,
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
@@ -357,7 +385,7 @@ fun TraitInputHost(
             trait = trait,
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp),
@@ -367,9 +395,9 @@ fun TraitInputHost(
         Formats.BOOLEAN -> BooleanTrait(
             value = value,
             defaultValue = trait?.defaultValue,
-            useDefaultValue = trait?.id?.let(controller::shouldUseDefaultValue) == true,
+            useDefaultValue = trait?.id?.let(viewModel::shouldUseDefaultValue) == true,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
@@ -378,7 +406,7 @@ fun TraitInputHost(
         Formats.COUNTER -> CounterTrait(
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
@@ -390,26 +418,27 @@ fun TraitInputHost(
             maximum = trait?.maximum,
             defaultValue = trait?.defaultValue,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
         Formats.AUDIO -> AudioTrait(
+            state = state,
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
-            controller = controller,
+            viewModel = viewModel,
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
         Formats.DATE -> DateTrait(
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
@@ -418,17 +447,17 @@ fun TraitInputHost(
         Formats.DISEASE_RATING -> DiseaseRatingTrait(
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
-            onValidationError = controller::showInputValidationMessage,
+            onValidationError = viewModel::showInputValidationMessage,
             modifier = modifier.fillMaxWidth().padding(8.dp)
         )
 
         Formats.LOCATION -> LocationTrait(
             value = value,
             onValueChange = {
-                controller.updateCurrentTraitValue(it)
+                viewModel.updateCurrentTraitValue(it)
                 onEdited()
             },
             modifier = modifier.fillMaxWidth().padding(8.dp)
@@ -436,17 +465,18 @@ fun TraitInputHost(
 
         Formats.CAMERA -> {
             PhotoTrait(
+                state = state,
                 values = values,
                 onPhotoCaptured = {
-                    controller.addCurrentTraitValue(it)
+                    viewModel.addCurrentTraitValue(it)
                     onEdited()
                 },
                 onPhotoDeleted = {
-                    controller.deleteCurrentTraitValue(it)
+                    viewModel.deleteCurrentTraitValue(it)
                     onEdited()
                 },
                 modifier = modifier.fillMaxWidth().padding(8.dp),
-                controller = controller,
+                viewModel = viewModel,
                 onExpandRequest = onExpandPhotoTrait
             )
         }
@@ -455,7 +485,7 @@ fun TraitInputHost(
             "disease", "disease_rating", "disease rating", "rust rating" -> DiseaseRatingTrait(
                 value = value,
                 onValueChange = {
-                    controller.updateCurrentTraitValue(it)
+                    viewModel.updateCurrentTraitValue(it)
                     onEdited()
                 },
                 onValidationError = { },

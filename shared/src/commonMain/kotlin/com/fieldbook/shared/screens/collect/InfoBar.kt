@@ -1,9 +1,9 @@
 package com.fieldbook.shared.screens.collect
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -93,12 +93,16 @@ private enum class InfoBarDialogTab(val title: StringResource) {
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) {
+fun InfoBar(
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
+    modifier: Modifier = Modifier,
+) {
     val settings = remember { Settings() }
     val attributeRepository = remember { ObservationUnitAttributeRepository() }
     val propertyRepository = remember { ObservationUnitPropertyRepository() }
     val traitRepository = remember { TraitRepository() }
-    val unit = controller.units.getOrNull(controller.currentUnitIndex)
+    val unit = state.units.getOrNull(state.currentUnitIndex)
     val hidePrefixEnabled = settings.getBoolean(PreferenceKeys.HIDE_INFOBAR_PREFIX, false)
     var infoBarCount by remember {
         mutableStateOf(settings.getInt(PreferenceKeys.INFOBAR_NUMBER, 3).coerceIn(1, 20))
@@ -107,16 +111,16 @@ fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) 
     val noDataLabel = stringResource(Res.string.main_infobar_data_missing)
     val showCategoryLabels = settings.getString(PreferenceKeys.LABELVAL_CUSTOMIZE, "value") != "value"
 
-    val availableAttributes = remember(controller.studyId, fieldNameLabel) {
+    val availableAttributes = remember(viewModel.studyId, fieldNameLabel) {
         buildList {
             add(fieldNameLabel)
             addAll(
-                attributeRepository.getAllNames(controller.studyId.toLong())
+                attributeRepository.getAllNames(viewModel.studyId.toLong())
                     .filter { it != fieldNameLabel }
             )
         }
     }
-    val allTraits = remember(controller.studyId) {
+    val allTraits = remember(viewModel.studyId) {
         traitRepository.getAllTraitsWithAttributes()
     }
     val visibleTraits = remember(allTraits) {
@@ -127,14 +131,14 @@ fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) 
     }
     val defaultSelectionOrder = remember(
         availableAttributes,
-        controller.primaryId,
-        controller.secondaryId,
+        viewModel.primaryId,
+        viewModel.secondaryId,
         fieldNameLabel
     ) {
         buildList {
             add("plot_id")
-            controller.primaryId.takeIf { it.isNotBlank() }?.let(::add)
-            controller.secondaryId.takeIf { it.isNotBlank() }?.let(::add)
+            viewModel.primaryId.takeIf { it.isNotBlank() }?.let(::add)
+            viewModel.secondaryId.takeIf { it.isNotBlank() }?.let(::add)
             add(fieldNameLabel)
             addAll(availableAttributes.filterNot { it in this })
         }
@@ -169,8 +173,8 @@ fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) 
 
     val fieldNameValue = settings.getString(
         GeneralKeys.FIELD_ALIAS.key,
-        controller.field.exp_name.ifBlank { noDataLabel }
-    ).ifBlank { controller.field.exp_name.ifBlank { noDataLabel } }
+        viewModel.field.exp_name.ifBlank { noDataLabel }
+    ).ifBlank { viewModel.field.exp_name.ifBlank { noDataLabel } }
 
     val attributeLabelsToQuery = selections
         .filter { it.traitId == null && it.label != fieldNameLabel }
@@ -178,7 +182,7 @@ fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) 
         .distinct()
     val unitId = unit?.observation_unit_db_id.orEmpty()
     val attributeValues = propertyRepository.getAttributeValuesForUnit(
-        uniqueName = controller.uniqueId,
+        uniqueName = viewModel.uniqueId,
         unitId = unitId,
         attributeLabels = attributeLabelsToQuery
     )
@@ -187,7 +191,8 @@ fun InfoBar(controller: CollectScreenController, modifier: Modifier = Modifier) 
         InfoBarItem(
             selection = selection,
             value = resolveInfoBarValue(
-                controller = controller,
+                viewModel = viewModel,
+                state = state,
                 selection = selection,
                 fieldNameLabel = fieldNameLabel,
                 fieldNameValue = fieldNameValue,
@@ -469,7 +474,8 @@ private fun persistInfoBarSelection(
 }
 
 private fun resolveInfoBarValue(
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
+    state: CollectUiState,
     selection: InfoBarSelection,
     fieldNameLabel: String,
     fieldNameValue: String,
@@ -479,7 +485,7 @@ private fun resolveInfoBarValue(
     showCategoryLabels: Boolean,
 ): String {
     selection.traitId?.let { traitId ->
-        val rawValue = controller.traitValues[traitId]?.lastOrNull()
+        val rawValue = state.traitValues[traitId]?.lastOrNull()
         if (rawValue.isNullOrBlank()) {
             return noDataLabel
         }
@@ -503,17 +509,18 @@ private fun resolveInfoBarValue(
 
     return attributeValues[selection.label]
         ?.takeIf { it.isNotBlank() }
-        ?: resolveRangeFallback(controller, selection.label).ifBlank { noDataLabel }
+        ?: resolveRangeFallback(viewModel, state, selection.label).ifBlank { noDataLabel }
 }
 
 private fun resolveRangeFallback(
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
+    state: CollectUiState,
     label: String,
 ): String {
     return when (label) {
-        controller.uniqueId -> controller.cRange.uniqueId
-        controller.primaryId -> controller.cRange.primaryId
-        controller.secondaryId -> controller.cRange.secondaryId
+        viewModel.uniqueId -> state.cRange.uniqueId
+        viewModel.primaryId -> state.cRange.primaryId
+        viewModel.secondaryId -> state.cRange.secondaryId
         else -> ""
     }
 }

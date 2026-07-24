@@ -25,10 +25,10 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun StatusBar(
-    viewModel: CollectScreenController,
+    state: CollectUiState,
     modifier: Modifier = Modifier,
 ) {
-    if (viewModel.traitValuesLoading) {
+    if (state.traitValuesLoading) {
         Box(
             modifier = modifier
                 .height(32.dp)
@@ -42,9 +42,9 @@ fun StatusBar(
 
     val listState = rememberLazyListState()
 
-    LaunchedEffect(viewModel.currentTraitIndex, viewModel.traits.size) {
-        if (viewModel.traits.isNotEmpty()) {
-            listState.animateScrollToItem(viewModel.currentTraitIndex)
+    LaunchedEffect(state.currentTraitIndex, state.traits.size) {
+        if (state.traits.isNotEmpty()) {
+            listState.animateScrollToItem(state.currentTraitIndex)
         }
     }
 
@@ -55,11 +55,11 @@ fun StatusBar(
             .fillMaxWidth(),
     ) {
         itemsIndexed(
-            items = viewModel.traits,
+            items = state.traits,
             key = { _, trait -> trait.id ?: trait.name }
         ) { index, trait ->
-            val hasObservation = viewModel.traitValues[trait.id] != null
-            val isCurrent = index == viewModel.currentTraitIndex
+            val hasObservation = trait.id?.let { state.traitValues[it] } != null
+            val isCurrent = index == state.currentTraitIndex
             val iconRes = if (hasObservation) Res.drawable.circle_filled else Res.drawable.circle_outline
             val iconColor = if (isCurrent) {
                 MaterialTheme.colorScheme.primary

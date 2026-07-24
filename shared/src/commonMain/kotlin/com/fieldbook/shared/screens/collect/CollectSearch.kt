@@ -393,7 +393,7 @@ private fun operatorLabel(operator: CollectSearchOperator): String {
 
 @Composable
 fun CollectSearchDialog(
-    controller: CollectScreenController,
+    controller: CollectScreenViewModel,
     visible: Boolean,
     onDismiss: () -> Unit,
 ) {

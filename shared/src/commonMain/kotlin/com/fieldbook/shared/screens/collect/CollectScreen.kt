@@ -36,6 +36,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fieldbook.shared.database.repository.ObservationUnitAttributeRepository
 import com.fieldbook.shared.database.repository.ObservationUnitPropertyRepository
 import com.fieldbook.shared.generated.resources.Res
@@ -99,9 +101,12 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun CollectScreen(
     modifier: Modifier = Modifier,
-    controller: CollectScreenController = remember { CollectScreenController() },
+    viewModel: CollectScreenViewModel = viewModel(
+        factory = collectScreenViewModelFactory()
+    ),
     onBack: (() -> Unit)? = null,
 ) {
+    val collectState by viewModel.uiState.collectAsState()
     var isCameraFullscreen by remember { mutableStateOf(false) }
     var isBarcodeScannerFullscreen by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
@@ -117,42 +122,42 @@ fun CollectScreen(
     val summaryEnabled = "summary" in toolbarCustomization
     val lockEnabled = "lockData" in toolbarCustomization
     val handleBack: () -> Unit = {
-        controller.persistCurrentSelection()
+        viewModel.persistCurrentSelection()
         onBack?.invoke()
     }
 
-    DisposableEffect(controller) {
+    DisposableEffect(viewModel) {
         onDispose {
-            controller.persistCurrentSelection()
+            viewModel.persistCurrentSelection()
         }
     }
 
-    val currentTrait = controller.traits.getOrNull(controller.currentTraitIndex)
-    val currentValues = currentTrait?.let { controller.traitValues[it.id] } ?: emptyList()
+    val currentTrait = collectState.traits.getOrNull(collectState.currentTraitIndex)
+    val currentValues = currentTrait?.id?.let { collectState.traitValues[it] } ?: emptyList()
     val currentFormat = currentTrait?.format?.let { formatStr ->
         Formats.entries.find { it.databaseName.equals(formatStr, ignoreCase = true) }
     }
     val isCurrentTraitCamera = currentFormat?.isCamera == true
-    val canDeleteCurrentValue = controller.hasCurrentTraitValue() && !controller.isCurrentObservationLocked()
-    var summaryFilter by remember(controller.studyId) {
-        mutableStateOf(loadCollectSummaryFilter(settings, controller.studyId))
+    val canDeleteCurrentValue = viewModel.hasCurrentTraitValue() && !viewModel.isCurrentObservationLocked()
+    var summaryFilter by remember(viewModel.studyId) {
+        mutableStateOf(loadCollectSummaryFilter(settings, viewModel.studyId))
     }
     val observationUnitPropertyRepository = remember { ObservationUnitPropertyRepository() }
-    val summaryAttributeLabels = remember(controller.studyId) {
-        ObservationUnitAttributeRepository().getAllNames(controller.studyId.toLong())
+    val summaryAttributeLabels = remember(viewModel.studyId) {
+        ObservationUnitAttributeRepository().getAllNames(viewModel.studyId.toLong())
     }
     val summaryAttributeValues = remember(
-        controller.currentUnitIndex,
-        controller.units,
+        collectState.currentUnitIndex,
+        collectState.units,
         summaryAttributeLabels,
-        controller.uniqueId
+        viewModel.uniqueId
     ) {
-        val unit = controller.units.getOrNull(controller.currentUnitIndex)
+        val unit = collectState.units.getOrNull(collectState.currentUnitIndex)
         if (unit == null) {
             emptyMap()
         } else {
             observationUnitPropertyRepository.getAttributeValuesForUnit(
-                uniqueName = controller.uniqueId,
+                uniqueName = viewModel.uniqueId,
                 unitId = unit.observation_unit_db_id,
                 attributeLabels = summaryAttributeLabels
             )
@@ -160,25 +165,27 @@ fun CollectScreen(
     }
     val summaryDefinitions = remember(
         summaryAttributeLabels,
-        controller.currentUnitIndex,
-        controller.units,
-        controller.traits
+        collectState.currentUnitIndex,
+        collectState.units,
+        collectState.traits
     ) {
         buildCollectSummaryDefinitions(
             attributeLabels = summaryAttributeLabels,
-            controller = controller
+            state = collectState
         )
     }
     val summaryItems = remember(
         summaryAttributeLabels,
-        controller.currentUnitIndex,
-        controller.units,
-        controller.traits,
-        controller.traitValues,
+        collectState.currentUnitIndex,
+        collectState.units,
+        collectState.traits,
+        collectState.traitValues,
+        collectState.cRange,
         summaryFilter
     ) {
         buildCollectSummaryItems(
-            controller = controller,
+            viewModel = viewModel,
+            state = collectState,
             attributeLabels = summaryAttributeLabels,
             attributeValues = summaryAttributeValues,
             showCategoryLabels = settings.getString(PreferenceKeys.LABELVAL_CUSTOMIZE, "value") != "value",
@@ -186,25 +193,26 @@ fun CollectScreen(
         )
     }
 
-    LaunchedEffect(controller.inputValidationMessage) {
-        controller.inputValidationMessage?.let { message ->
+    LaunchedEffect(viewModel.inputValidationMessage) {
+        viewModel.inputValidationMessage?.let { message ->
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(
                 message = message,
                 duration = SnackbarDuration.Short
             )
-            controller.clearInputValidationMessage()
+            viewModel.clearInputValidationMessage()
         }
     }
 
     if (isCameraFullscreen && isCurrentTraitCamera) {
         Surface(modifier = modifier.fillMaxSize()) {
             PhotoTrait(
+                state = collectState,
                 values = currentValues,
-                onPhotoCaptured = { controller.addCurrentTraitValue(it) },
-                onPhotoDeleted = { controller.deleteCurrentTraitValue(it) },
+                onPhotoCaptured = { viewModel.addCurrentTraitValue(it) },
+                onPhotoDeleted = { viewModel.deleteCurrentTraitValue(it) },
                 modifier = Modifier.fillMaxSize(),
-                controller = controller,
+                viewModel = viewModel,
                 displayMode = PhotoTraitDisplayMode.FULLSCREEN,
                 onCollapseRequest = { isCameraFullscreen = false }
             )
@@ -223,7 +231,7 @@ fun CollectScreen(
                         is Scannable -> traitFormat.preprocess(scannedValue)
                         else -> scannedValue
                     }
-                    controller.updateCurrentTraitValue(valueToStore)
+                    viewModel.updateCurrentTraitValue(valueToStore)
                     isBarcodeScannerFullscreen = false
                 }
             )
@@ -234,11 +242,11 @@ fun CollectScreen(
     if (showDataGrid) {
         DataGridScreen(
             modifier = modifier,
-            activePlotIndex = controller.currentUnitIndex + 1,
-            activeTraitIndex = controller.currentTraitIndex + 1,
+            activePlotIndex = collectState.currentUnitIndex + 1,
+            activeTraitIndex = collectState.currentTraitIndex + 1,
             onBack = { showDataGrid = false },
             onSelection = { selection ->
-                controller.applyDataGridSelection(selection)
+                viewModel.applyDataGridSelection(selection)
                 showDataGrid = false
             }
         )
@@ -259,7 +267,7 @@ fun CollectScreen(
                     if (onBack != null) {
                         IconButton(
                             onClick = handleBack,
-                            enabled = !controller.collectInteractionLocked
+                            enabled = !collectState.collectInteractionLocked
                         ) {
                             Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                         }
@@ -269,7 +277,7 @@ fun CollectScreen(
                     if (searchEnabled) {
                         IconButton(
                             onClick = { showSearchDialog = true },
-                            enabled = !controller.collectInteractionLocked
+                            enabled = !collectState.collectInteractionLocked
                         ) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_tb_search),
@@ -280,7 +288,7 @@ fun CollectScreen(
                     if (dataGridEnabled) {
                         IconButton(
                             onClick = { showDataGrid = true },
-                            enabled = !controller.collectInteractionLocked
+                            enabled = !collectState.collectInteractionLocked
                         ) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_field),
@@ -291,7 +299,7 @@ fun CollectScreen(
                     if (summaryEnabled) {
                         IconButton(
                             onClick = { showSummaryDialog = true },
-                            enabled = !controller.collectInteractionLocked
+                            enabled = !collectState.collectInteractionLocked
                         ) {
                             Icon(
                                 painter = painterResource(Res.drawable.ic_tb_details),
@@ -301,9 +309,9 @@ fun CollectScreen(
                     }
                     if (lockEnabled) {
                         IconButton(
-                            onClick = { controller.cycleDataLockState() }
+                            onClick = { viewModel.cycleDataLockState() }
                         ) {
-                            val lockIcon = when (controller.dataLockState) {
+                            val lockIcon = when (viewModel.dataLockState) {
                                 CollectDataLockState.UNLOCKED -> Res.drawable.ic_tb_unlock
                                 CollectDataLockState.LOCKED -> Res.drawable.ic_tb_lock
                                 CollectDataLockState.FROZEN -> Res.drawable.ic_lock_clock
@@ -325,12 +333,12 @@ fun CollectScreen(
         },
         bottomBar = {
             CollectBottomBar(
-                canScanBarcode = !controller.isCurrentObservationLocked(),
-                canSetNa = !controller.isCurrentObservationLocked(),
+                canScanBarcode = !viewModel.isCurrentObservationLocked(),
+                canSetNa = !viewModel.isCurrentObservationLocked(),
                 canDeleteCurrentValue = canDeleteCurrentValue,
                 onScanBarcode = { isBarcodeScannerFullscreen = true },
-                onSetNa = controller::setCurrentTraitNa,
-                onDelete = controller::clearCurrentTraitValue
+                onSetNa = viewModel::setCurrentTraitNa,
+                onDelete = viewModel::clearCurrentTraitValue
             )
         }
     ) { innerPadding ->
@@ -340,15 +348,15 @@ fun CollectScreen(
                 .padding(innerPadding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (controller.unitLoading || controller.traitLoading) {
+                if (collectState.unitLoading || collectState.traitLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                } else if (controller.unitError != null || controller.traitError != null) {
+                } else if (collectState.unitError != null || collectState.traitError != null) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Error: ${controller.unitError ?: controller.traitError}")
+                        Text("Error: ${collectState.unitError ?: collectState.traitError}")
                     }
-                } else if (controller.units.isNotEmpty() && controller.traits.isNotEmpty()) {
+                } else if (collectState.units.isNotEmpty() && collectState.traits.isNotEmpty()) {
                     Column(
                         Modifier
                             .fillMaxWidth()
@@ -357,16 +365,24 @@ fun CollectScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(Modifier.height(8.dp))
-                        InfoBar(controller = controller)
+                        InfoBar(
+                            state = collectState,
+                            viewModel = viewModel
+                        )
                         Spacer(Modifier.height(8.dp))
                         TraitBox(
-                            viewModel = controller,
+                            state = collectState,
+                            viewModel = viewModel,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(Modifier.height(8.dp))
-                        RangeBox(controller = controller)
+                        RangeBox(
+                            state = collectState,
+                            viewModel = viewModel
+                        )
                         CollectInput(
-                            controller = controller,
+                            state = collectState,
+                            viewModel = viewModel,
                             modifier = Modifier.weight(1f),
                             onExpandPhotoTrait = { isCameraFullscreen = true }
                         )
@@ -380,29 +396,29 @@ fun CollectScreen(
         CollectSummaryDialog(
             title = stringResource(Res.string.fragment_summary_toolbar_title),
             items = summaryItems,
-            canNavigatePrevious = controller.units.isNotEmpty(),
-            canNavigateNext = controller.units.isNotEmpty(),
+            canNavigatePrevious = collectState.units.isNotEmpty(),
+            canNavigateNext = collectState.units.isNotEmpty(),
             onFilterUpdated = { filter ->
                 summaryFilter = filter
-                persistCollectSummaryFilter(settings, controller.studyId, filter)
+                persistCollectSummaryFilter(settings, viewModel.studyId, filter)
             },
             filterOptions = summaryDefinitions,
             initialFilter = summaryFilter,
             onTraitSelected = { traitId ->
-                val traitIndex = controller.traits.indexOfFirst { it.id == traitId }
+                val traitIndex = collectState.traits.indexOfFirst { it.id == traitId }
                 if (traitIndex >= 0) {
-                    controller.updateCurrentTraitIndex(traitIndex)
+                    viewModel.updateCurrentTraitIndex(traitIndex)
                 }
                 showSummaryDialog = false
             },
-            onPrevious = { controller.goToPreviousUnit() },
-            onNext = { controller.goToNextUnit() },
+            onPrevious = { viewModel.goToPreviousUnit() },
+            onNext = { viewModel.goToNextUnit() },
             onDismiss = { showSummaryDialog = false }
         )
     }
 
     CollectSearchDialog(
-        controller = controller,
+        controller = viewModel,
         visible = showSearchDialog,
         onDismiss = { showSearchDialog = false }
     )
@@ -426,11 +442,11 @@ private data class CollectSummaryFilter(
 
 private fun buildCollectSummaryDefinitions(
     attributeLabels: List<String>,
-    controller: CollectScreenController,
+    state: CollectUiState,
 ): List<CollectSummaryDefinition> {
-    if (controller.units.isEmpty()) return emptyList()
+    if (state.units.isEmpty()) return emptyList()
 
-    val traitDefinitions = controller.traits.mapNotNull { trait ->
+    val traitDefinitions = state.traits.mapNotNull { trait ->
         val traitId = trait.id ?: return@mapNotNull null
         CollectSummaryDefinition(label = trait.name, traitId = traitId)
     }.sortedBy { it.label }
@@ -443,13 +459,14 @@ private fun buildCollectSummaryDefinitions(
 }
 
 private fun buildCollectSummaryItems(
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
+    state: CollectUiState,
     attributeLabels: List<String>,
     attributeValues: Map<String, String>,
     showCategoryLabels: Boolean,
     filter: CollectSummaryFilter,
 ): List<CollectSummaryItem> {
-    if (controller.units.getOrNull(controller.currentUnitIndex) == null) return emptyList()
+    if (state.units.getOrNull(state.currentUnitIndex) == null) return emptyList()
 
     val visibleAttributeLabels = filter.attributeLabels
 
@@ -457,7 +474,7 @@ private fun buildCollectSummaryItems(
         .map { label ->
             CollectSummaryItem(
                 label = label,
-                value = resolveSummaryAttributeValue(controller, label, attributeValues).ifBlank { "" }
+                value = resolveSummaryAttributeValue(viewModel, state, label, attributeValues).ifBlank { "" }
             )
         }
         .filter { visibleAttributeLabels == null || it.label in visibleAttributeLabels }
@@ -465,10 +482,10 @@ private fun buildCollectSummaryItems(
 
     val visibleTraitIds = filter.traitIds
 
-    val traitItems = controller.traits.mapNotNull { trait ->
+    val traitItems = state.traits.mapNotNull { trait ->
         val traitId = trait.id ?: return@mapNotNull null
         if (visibleTraitIds != null && traitId !in visibleTraitIds) return@mapNotNull null
-        val rawValue = controller.traitValues[traitId]?.joinToString("\n").orEmpty()
+        val rawValue = state.traitValues[traitId]?.joinToString("\n").orEmpty()
 
         val displayValue = when (trait.format?.lowercase()) {
             Formats.CATEGORICAL.databaseName,
@@ -497,16 +514,17 @@ private fun buildCollectSummaryItems(
 }
 
 private fun resolveSummaryAttributeValue(
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
+    state: CollectUiState,
     label: String,
     attributeValues: Map<String, String>,
 ): String {
     attributeValues[label]?.let { return it }
 
     return when (label) {
-        controller.uniqueId -> controller.cRange.uniqueId
-        controller.primaryId -> controller.cRange.primaryId
-        controller.secondaryId -> controller.cRange.secondaryId
+        viewModel.uniqueId -> state.cRange.uniqueId
+        viewModel.primaryId -> state.cRange.primaryId
+        viewModel.secondaryId -> state.cRange.secondaryId
         else -> ""
     }
 }

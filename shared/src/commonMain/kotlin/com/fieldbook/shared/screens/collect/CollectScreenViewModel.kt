@@ -1,9 +1,9 @@
 package com.fieldbook.shared.screens.collect
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.fieldbook.shared.database.models.FieldObject
 import com.fieldbook.shared.database.models.ObservationUnitModel
 import com.fieldbook.shared.database.models.TraitObject
@@ -24,6 +24,9 @@ import com.fieldbook.shared.screens.datagrid.DataGridSelection
 import com.fieldbook.shared.theme.AppColors
 import com.fieldbook.shared.traits.Formats
 import com.russhwolf.settings.Settings
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 
@@ -39,65 +42,66 @@ enum class CollectDataLockState(val persistedValue: Int) {
     }
 }
 
-// TODO refactor to use ViewModel() ?
-class CollectScreenController {
-    private val traitRepository = TraitRepository()
-    private val observationRepository = ObservationRepository()
-    private val observationUnitRepository = ObservationUnitRepository()
-    private val observationUnitPropertyRepository = ObservationUnitPropertyRepository()
-    private val studyRepository = StudyRepository()
+data class CollectUiState(
+    val units: List<ObservationUnitModel> = emptyList(),
+    val rangeID: Array<Int> = emptyArray(),
+    val unitLoading: Boolean = true,
+    val unitError: String? = null,
+    val currentUnitIndex: Int = 0,
+    val traits: List<TraitObject> = emptyList(),
+    val traitLoading: Boolean = true,
+    val traitError: String? = null,
+    val currentTraitIndex: Int = 0,
+    val traitValues: Map<Long, List<String>> = emptyMap(),
+    val traitValuesLoading: Boolean = true,
+    val inputValidationMessage: String? = null,
+    val collectInteractionLocked: Boolean = false,
+    val dataLockState: CollectDataLockState = CollectDataLockState.UNLOCKED,
+    val currentObservationHadInitialValue: Boolean = false,
+    val cRange: RangeObject = RangeObject(),
+)
 
-    private val settings: Settings = Settings()
+class CollectScreenViewModel(
+    private val traitRepository: TraitRepository = TraitRepository(),
+    private val observationRepository: ObservationRepository = ObservationRepository(),
+    private val observationUnitRepository: ObservationUnitRepository = ObservationUnitRepository(),
+    private val observationUnitPropertyRepository: ObservationUnitPropertyRepository = ObservationUnitPropertyRepository(),
+    private val studyRepository: StudyRepository = StudyRepository(),
+    private val settings: Settings = Settings(),
+) : ViewModel() {
 
     val studyId: Int = settings.getInt(GeneralKeys.SELECTED_FIELD_ID.key, 0)
     val field: FieldObject = studyRepository.getById(studyId)
 
-    var units by mutableStateOf<List<ObservationUnitModel>>(emptyList())
-        private set
-    var rangeID by mutableStateOf<Array<Int>>(emptyArray())
-        private set
+    private val _uiState = MutableStateFlow(
+        CollectUiState(
+            dataLockState = CollectDataLockState.fromPersistedValue(
+                settings.getInt(
+                    GeneralKeys.DATA_LOCK_STATE.key,
+                    CollectDataLockState.UNLOCKED.persistedValue
+                )
+            )
+        )
+    )
+    val uiState: StateFlow<CollectUiState> = _uiState.asStateFlow()
 
-    var unitLoading by mutableStateOf(true)
-        private set
-    var unitError by mutableStateOf<String?>(null)
-        private set
-    var currentUnitIndex by mutableStateOf(0)
-        private set
+    val units: List<ObservationUnitModel> get() = _uiState.value.units
+    val rangeID: Array<Int> get() = _uiState.value.rangeID
+    val currentUnitIndex: Int get() = _uiState.value.currentUnitIndex
+    val traits: List<TraitObject> get() = _uiState.value.traits
+    val currentTraitIndex: Int get() = _uiState.value.currentTraitIndex
+    val traitValues: Map<Long, List<String>> get() = _uiState.value.traitValues
+    val inputValidationMessage: String? get() = _uiState.value.inputValidationMessage
+    val dataLockState: CollectDataLockState get() = _uiState.value.dataLockState
 
-    var traits by mutableStateOf<List<TraitObject>>(emptyList())
-        private set
-    var traitLoading by mutableStateOf(true)
-        private set
-    var traitError by mutableStateOf<String?>(null)
-        private set
-    var currentTraitIndex by mutableStateOf(0)
-        private set
-
-    var traitValues by mutableStateOf<Map<Long, List<String>>>(emptyMap())
-        private set
-    var traitValuesLoading by mutableStateOf(true)
-        private set
     private var lastUnitId: String? = null
     private var restoredUnitSelection = false
     private var restoredTraitSelection = false
-    var inputValidationMessage by mutableStateOf<String?>(null)
-        private set
-    var collectInteractionLocked by mutableStateOf(false)
-        private set
-    var dataLockState by mutableStateOf(
-        CollectDataLockState.fromPersistedValue(
-            settings.getInt(GeneralKeys.DATA_LOCK_STATE.key, CollectDataLockState.UNLOCKED.persistedValue)
-        )
-    )
-        private set
     private val suppressedDefaultEntries = mutableSetOf<String>()
-    private var currentObservationHadInitialValue by mutableStateOf(false)
 
     val primaryId = settings.getString(GeneralKeys.PRIMARY_NAME.key, "")
     val secondaryId = settings.getString(GeneralKeys.SECONDARY_NAME.key, "")
     val uniqueId = settings.getString(GeneralKeys.UNIQUE_NAME.key, "")
-
-    var cRange: RangeObject by mutableStateOf(RangeObject())
 
     init {
         loadUnits()
@@ -105,49 +109,59 @@ class CollectScreenController {
         loadTraitValues()
     }
 
+    private fun updateState(transform: CollectUiState.() -> CollectUiState) {
+        _uiState.value = _uiState.value.transform()
+    }
+
     fun updateCurrentRange(id: Int) {
         try {
-            cRange = observationUnitPropertyRepository.getRangeFromId(
-                id.toLong(),
-                primaryId,
-                secondaryId,
-                uniqueId
-            )
+            updateState {
+                copy(
+                    cRange = observationUnitPropertyRepository.getRangeFromId(
+                        id.toLong(),
+                        primaryId,
+                        secondaryId,
+                        uniqueId
+                    )
+                )
+            }
         } catch (e: Exception) {
             // On error, ensure UI doesn't crash and show an empty range
             e.printStackTrace()
-            cRange = RangeObject("", "", "")
+            updateState { copy(cRange = RangeObject("", "", "")) }
         }
     }
 
     private fun loadUnits() {
         try {
-            units = observationUnitRepository.getAllObservationUnits(studyId.toLong())
-            rangeID = observationUnitPropertyRepository.allRangeID(studyId)
+            updateState {
+                copy(
+                    units = observationUnitRepository.getAllObservationUnits(studyId.toLong()),
+                    rangeID = observationUnitPropertyRepository.allRangeID(studyId)
+                )
+            }
             restoreLastUnitSelection()
-            unitLoading = false
+            updateState { copy(unitLoading = false) }
         } catch (e: Exception) {
             e.printStackTrace()
-            unitError = e.message
-            unitLoading = false
+            updateState { copy(unitError = e.message, unitLoading = false) }
         }
     }
 
     private fun loadTraits() {
         try {
-            traits = traitRepository.getVisibleTraitsWithAttributes()
+            updateState { copy(traits = traitRepository.getVisibleTraitsWithAttributes()) }
             restoreLastTraitSelection()
-            traitLoading = false
+            updateState { copy(traitLoading = false) }
         } catch (e: Exception) {
             e.printStackTrace()
-            traitError = e.message
-            traitLoading = false
+            updateState { copy(traitError = e.message, traitLoading = false) }
         }
     }
 
     fun updateCurrentUnitIndex(index: Int): Boolean {
         if (index in units.indices && validateCurrentTraitValue()) {
-            currentUnitIndex = index
+            updateState { copy(currentUnitIndex = index) }
             rangeID.getOrNull(index)?.let(::updateCurrentRange)
             persistCurrentSelection()
             loadTraitValues()
@@ -171,7 +185,7 @@ class CollectScreenController {
 
     fun updateCurrentTraitIndex(index: Int): Boolean {
         if (index in traits.indices && validateCurrentTraitValue()) {
-            currentTraitIndex = index
+            updateState { copy(currentTraitIndex = index) }
             persistCurrentSelection()
             refreshCurrentObservationLockState()
             return true
@@ -221,9 +235,13 @@ class CollectScreenController {
         val unit = units.getOrNull(currentUnitIndex)
         val plotId = unit?.observation_unit_db_id
         if (plotId != null && plotId != lastUnitId) {
-            traitValuesLoading = true
-            traitValues = observationRepository.getUserDetail(studyId.toLong(), plotId)
-            traitValuesLoading = false
+            updateState { copy(traitValuesLoading = true) }
+            updateState {
+                copy(
+                    traitValues = observationRepository.getUserDetail(studyId.toLong(), plotId),
+                    traitValuesLoading = false
+                )
+            }
             lastUnitId = plotId
         }
         refreshCurrentObservationLockState()
@@ -242,7 +260,7 @@ class CollectScreenController {
         val plotId = unit?.observation_unit_db_id
 
         if (plotId != null && trait?.id != null) {
-            currentEntryKey(plotId, trait.id!!)?.let { entryKey ->
+            currentEntryKey(plotId, trait.id!!).let { entryKey ->
                 if (value.isBlank()) {
                     suppressedDefaultEntries.add(entryKey)
                 } else {
@@ -255,38 +273,18 @@ class CollectScreenController {
                 value = value,
                 studyId = studyId.toLong()
             )
-            traitValues = traitValues.toMutableMap().apply {
-                put(trait.id!!, listOf(value))
+            updateState {
+                copy(
+                    traitValues = traitValues.toMutableMap().apply {
+                        put(trait.id!!, listOf(value))
+                    }
+                )
             }
         }
     }
 
     fun setCurrentTraitNa() {
         updateCurrentTraitValue("NA")
-    }
-
-    fun updateCurrentUnitGeoCoordinates(geoCoordinates: String) {
-        if (!canMutateCurrentObservation()) {
-            showCurrentDataLockMessage()
-            return
-        }
-        val unit = units.getOrNull(currentUnitIndex)
-        val unitDbId = unit?.observation_unit_db_id ?: return
-
-        observationUnitRepository.updateGeoCoordinates(
-            studyId = studyId.toLong(),
-            observationUnitDbId = unitDbId,
-            geoCoordinates = geoCoordinates,
-        )
-
-        units = units.toMutableList().also { updated ->
-            val current = updated.getOrNull(currentUnitIndex) ?: return@also
-            updated[currentUnitIndex] = current.copy(
-                map = current.map.toMutableMap().apply {
-                    put("geo_coordinates", geoCoordinates)
-                }
-            )
-        }
     }
 
     fun shouldUseDefaultValue(traitId: Long?): Boolean {
@@ -297,7 +295,7 @@ class CollectScreenController {
         val currentValue = traitValues[traitId]?.firstOrNull().orEmpty()
         if (currentValue.isNotEmpty()) return false
 
-        return currentEntryKey(plotId, traitId)?.let { it !in suppressedDefaultEntries } == true
+        return currentEntryKey(plotId, traitId).let { it !in suppressedDefaultEntries }
     }
 
     fun ensureCurrentTraitDefaultValueApplied() {
@@ -350,9 +348,13 @@ class CollectScreenController {
                 value = value,
                 studyId = studyId.toLong()
             )
-            traitValues = traitValues.toMutableMap().apply {
-                val sanitizedCurrentList = currentList.filterNot { it == "NA" }
-                put(traitId, sanitizedCurrentList + value)
+            updateState {
+                copy(
+                    traitValues = traitValues.toMutableMap().apply {
+                        val sanitizedCurrentList = currentList.filterNot { it == "NA" }
+                        put(traitId, sanitizedCurrentList + value)
+                    }
+                )
             }
         }
     }
@@ -376,14 +378,18 @@ class CollectScreenController {
                 value = value,
                 studyId = studyId.toLong()
             )
-            traitValues = traitValues.toMutableMap().apply {
-                val currentList = get(trait.id!!).orEmpty().toMutableList()
-                currentList.remove(value)
-                if (currentList.isEmpty()) {
-                    remove(trait.id!!)
-                } else {
-                    put(trait.id!!, currentList)
-                }
+            updateState {
+                copy(
+                    traitValues = traitValues.toMutableMap().apply {
+                        val currentList = get(trait.id!!).orEmpty().toMutableList()
+                        currentList.remove(value)
+                        if (currentList.isEmpty()) {
+                            remove(trait.id!!)
+                        } else {
+                            put(trait.id!!, currentList)
+                        }
+                    }
+                )
             }
         }
     }
@@ -403,24 +409,25 @@ class CollectScreenController {
     }
 
     fun clearInputValidationMessage() {
-        inputValidationMessage = null
+        updateState { copy(inputValidationMessage = null) }
     }
 
     fun showInputValidationMessage(message: String) {
-        inputValidationMessage = message
+        updateState { copy(inputValidationMessage = message) }
     }
 
     fun updateCollectInteractionLocked(locked: Boolean) {
-        collectInteractionLocked = locked
+        updateState { copy(collectInteractionLocked = locked) }
     }
 
     fun cycleDataLockState() {
-        dataLockState = when (dataLockState) {
+        val nextState = when (dataLockState) {
             CollectDataLockState.UNLOCKED -> CollectDataLockState.LOCKED
             CollectDataLockState.LOCKED -> CollectDataLockState.FROZEN
             CollectDataLockState.FROZEN -> CollectDataLockState.UNLOCKED
         }
-        settings.putInt(GeneralKeys.DATA_LOCK_STATE.key, dataLockState.persistedValue)
+        updateState { copy(dataLockState = nextState) }
+        settings.putInt(GeneralKeys.DATA_LOCK_STATE.key, nextState.persistedValue)
         showCurrentDataLockMessage()
     }
 
@@ -428,7 +435,7 @@ class CollectScreenController {
         return when (dataLockState) {
             CollectDataLockState.UNLOCKED -> false
             CollectDataLockState.LOCKED -> true
-            CollectDataLockState.FROZEN -> currentObservationHadInitialValue
+            CollectDataLockState.FROZEN -> _uiState.value.currentObservationHadInitialValue
         }
     }
 
@@ -440,13 +447,14 @@ class CollectScreenController {
     }
 
     fun showCurrentDataLockMessage() {
-        inputValidationMessage = runBlocking {
+        val message = runBlocking {
             when (dataLockState) {
                 CollectDataLockState.UNLOCKED -> getString(Res.string.activity_collect_unlocked_state)
                 CollectDataLockState.LOCKED -> getString(Res.string.activity_collect_locked_state)
                 CollectDataLockState.FROZEN -> getString(Res.string.activity_collect_frozen_state)
             }
         }
+        updateState { copy(inputValidationMessage = message) }
     }
 
     fun clearCurrentTraitValue() {
@@ -461,15 +469,19 @@ class CollectScreenController {
         val currentValue = traitId?.let { traitValues[it]?.firstOrNull() }.orEmpty()
 
         if (plotId != null && traitId != null) {
-            currentEntryKey(plotId, traitId)?.let { suppressedDefaultEntries.add(it) }
+            currentEntryKey(plotId, traitId).let { suppressedDefaultEntries.add(it) }
             observationRepository.deleteTraitByValue(
                 plotId = plotId,
                 traitDbId = traitId,
                 value = currentValue,
                 studyId = studyId.toLong()
             )
-            traitValues = traitValues.toMutableMap().apply {
-                remove(traitId)
+            updateState {
+                copy(
+                    traitValues = traitValues.toMutableMap().apply {
+                        remove(traitId)
+                    }
+                )
             }
             refreshCurrentObservationLockState()
         }
@@ -511,7 +523,7 @@ class CollectScreenController {
             }
         }
 
-        currentUnitIndex = if (restoredIndex >= 0) restoredIndex else 0
+        updateState { copy(currentUnitIndex = if (restoredIndex >= 0) restoredIndex else 0) }
         rangeID.getOrNull(currentUnitIndex)?.let(::updateCurrentRange)
     }
 
@@ -522,19 +534,19 @@ class CollectScreenController {
         val lastTraitId = settings.getString(lastTraitKey(), "").trim()
             .ifEmpty { settings.getString(GeneralKeys.LAST_USED_TRAIT.key, "").trim() }
         if (lastTraitId.isEmpty()) {
-            currentTraitIndex = 0
+            updateState { copy(currentTraitIndex = 0) }
             return
         }
 
         val restoredIndex = traits.indexOfFirst { it.id?.toString() == lastTraitId }
-        currentTraitIndex = if (restoredIndex >= 0) restoredIndex else 0
+        updateState { copy(currentTraitIndex = if (restoredIndex >= 0) restoredIndex else 0) }
         refreshCurrentObservationLockState()
     }
 
     private fun refreshCurrentObservationLockState() {
         val traitId = traits.getOrNull(currentTraitIndex)?.id
         val currentValue = traitId?.let { traitValues[it]?.firstOrNull() }.orEmpty()
-        currentObservationHadInitialValue = currentValue.isNotEmpty()
+        updateState { copy(currentObservationHadInitialValue = currentValue.isNotEmpty()) }
     }
 
     private fun currentRangeUniqueId(): String? {
@@ -560,8 +572,9 @@ class CollectScreenController {
     private fun validateCurrentTraitValue(): Boolean {
         val trait = traits.getOrNull(currentTraitIndex) ?: return true
         val currentValue = trait.id?.let { traitValues[it]?.firstOrNull() }.orEmpty()
-        inputValidationMessage = validateNumericTraitValue(trait, currentValue)
-        if (inputValidationMessage != null) {
+        val validationMessage = validateNumericTraitValue(trait, currentValue)
+        updateState { copy(inputValidationMessage = validationMessage) }
+        if (validationMessage != null) {
             clearCurrentTraitValue()
             return false
         }
@@ -598,5 +611,18 @@ class CollectScreenController {
         }
 
         return null
+    }
+}
+
+fun collectScreenViewModelFactory() = viewModelFactory {
+    initializer {
+        CollectScreenViewModel(
+            traitRepository = TraitRepository(),
+            observationRepository = ObservationRepository(),
+            observationUnitRepository = ObservationUnitRepository(),
+            observationUnitPropertyRepository = ObservationUnitPropertyRepository(),
+            studyRepository = StudyRepository(),
+            settings = Settings(),
+        )
     }
 }

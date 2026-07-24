@@ -44,7 +44,8 @@ import com.fieldbook.shared.generated.resources.arrow_expand
 import com.fieldbook.shared.generated.resources.arrow_left
 import com.fieldbook.shared.generated.resources.camera_24px
 import com.fieldbook.shared.generated.resources.close
-import com.fieldbook.shared.screens.collect.CollectScreenController
+import com.fieldbook.shared.screens.collect.CollectScreenViewModel
+import com.fieldbook.shared.screens.collect.CollectUiState
 import com.fieldbook.shared.theme.MainFloatingActionButtonShape
 import com.fieldbook.shared.utilities.DocumentFile
 import com.fieldbook.shared.utilities.DocumentTreeUtil
@@ -77,18 +78,19 @@ enum class PhotoTraitDisplayMode {
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 fun PhotoTrait(
+    state: CollectUiState,
     values: List<String>,
     onPhotoCaptured: (String) -> Unit,
     onPhotoDeleted: (String) -> Unit,
     modifier: Modifier = Modifier,
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
     displayMode: PhotoTraitDisplayMode = PhotoTraitDisplayMode.INLINE,
     onExpandRequest: () -> Unit = {},
     onCollapseRequest: () -> Unit = {},
 ) {
     fun currentTraitName(): String {
-        return controller.traits
-            .getOrNull(controller.currentTraitIndex)
+        return state.traits
+            .getOrNull(state.currentTraitIndex)
             ?.name
             ?.takeIf { it.isNotBlank() }
             ?: PHOTO_DIRECTORY_NAME
@@ -103,7 +105,7 @@ fun PhotoTrait(
     }
 
     fun buildPhotoFileName(): String {
-        val plotId = controller.units.getOrNull(controller.currentUnitIndex)?.observation_unit_db_id
+        val plotId = state.units.getOrNull(state.currentUnitIndex)?.observation_unit_db_id
             ?.takeIf { it.isNotBlank() }
             ?: "photo"
         val traitName = sanitizeFileName(currentTraitName())
