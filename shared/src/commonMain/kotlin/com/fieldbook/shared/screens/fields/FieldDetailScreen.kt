@@ -66,10 +66,12 @@ import com.fieldbook.shared.generated.resources.field_sort_entries
 import com.fieldbook.shared.generated.resources.fields_delete
 import com.fieldbook.shared.generated.resources.fields_delete_confirmation
 import com.fieldbook.shared.generated.resources.fields_rename_study
+import com.fieldbook.shared.generated.resources.ic_chevron_right
 import com.fieldbook.shared.generated.resources.ic_dots_grid
 import com.fieldbook.shared.generated.resources.ic_field_sync
 import com.fieldbook.shared.generated.resources.ic_information_outline
 import com.fieldbook.shared.generated.resources.ic_land_fields
+import com.fieldbook.shared.generated.resources.ic_nav_drawer_collect_data
 import com.fieldbook.shared.generated.resources.ic_rename
 import com.fieldbook.shared.generated.resources.ic_reorder
 import com.fieldbook.shared.generated.resources.ic_sort
@@ -80,10 +82,15 @@ import com.fieldbook.shared.generated.resources.ic_tb_delete
 import com.fieldbook.shared.generated.resources.name_cannot_be_empty
 import com.fieldbook.shared.generated.resources.name_conflict_display_name
 import com.fieldbook.shared.generated.resources.name_conflict_import_name
+import com.fieldbook.shared.generated.resources.no_activity
 import com.fieldbook.shared.generated.resources.search_attribute_apply_to_all
 import com.fieldbook.shared.generated.resources.search_attribute_dialog_title
+import com.fieldbook.shared.generated.resources.settings_collect
+import com.fieldbook.shared.generated.resources.settings_export
 import com.fieldbook.shared.generated.resources.sort_ascending
 import com.fieldbook.shared.generated.resources.sort_descending
+import com.fieldbook.shared.generated.resources.trait_date_save
+import com.fieldbook.shared.generated.resources.warning_traits_missing
 import com.fieldbook.shared.objects.ImportFormat
 import com.fieldbook.shared.preferences.PreferenceKeys
 import com.fieldbook.shared.theme.AlertDialog
@@ -95,6 +102,7 @@ import com.russhwolf.settings.Settings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -108,6 +116,8 @@ fun FieldDetailScreen(
     viewModel: FieldEditorScreenViewModel,
     onBack: () -> Unit,
     onDeleted: () -> Unit,
+    onNavigateToCollect: (() -> Unit)? = null,
+    onNavigateToExport: ((Int) -> Unit)? = null,
     onSnackbarMessage: (String) -> Unit,
 ) {
     val field by viewModel.fieldDetail.collectAsState()
@@ -226,6 +236,8 @@ fun FieldDetailScreen(
             val importFormat = ImportFormat.fromString(currentField.import_format)
             val headerIcon = Res.drawable.ic_land_fields
             val sourceIcon = Res.drawable.ic_table_arrow_right
+            val noActivityText = stringResource(Res.string.no_activity)
+            val traitsMissingMessage = stringResource(Res.string.warning_traits_missing)
             val sourceText = currentField.exp_source
                 ?.takeIf { it.isNotBlank() }
                 ?: if (importFormat == ImportFormat.CSV) {
@@ -332,6 +344,41 @@ fun FieldDetailScreen(
                     }
                 }
 
+                item {
+                    FieldDetailActionCard(
+                        title = stringResource(Res.string.settings_collect),
+                        subtitle = relativeTimeText(currentField.date_edit) ?: noActivityText,
+                        icon = Res.drawable.ic_nav_drawer_collect_data,
+                        onClick = {
+                            currentField.exp_id?.let { id ->
+                                if (!viewModel.hasVisibleTraits()) {
+                                    onSnackbarMessage(traitsMissingMessage)
+                                } else {
+                                    viewModel.switchField(id)
+                                    onNavigateToCollect?.invoke()
+                                }
+                            }
+                        }
+                    )
+                }
+
+                item {
+                    FieldDetailActionCard(
+                        title = stringResource(Res.string.settings_export),
+                        subtitle = relativeTimeText(currentField.date_export) ?: noActivityText,
+                        icon = Res.drawable.trait_date_save,
+                        onClick = {
+                            currentField.exp_id?.let { id ->
+                                if (!viewModel.hasVisibleTraits()) {
+                                    onSnackbarMessage(traitsMissingMessage)
+                                } else {
+                                    onNavigateToExport?.invoke(id)
+                                }
+                            }
+                        }
+                    )
+                }
+
                 if (importFormat == ImportFormat.BRAPI) {
                     item {
                         Card(
@@ -382,7 +429,7 @@ fun FieldDetailScreen(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
-                                        text = relativeTimeText(currentField.date_sync) ?: "No activity",
+                                        text = relativeTimeText(currentField.date_sync) ?: noActivityText,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -492,6 +539,56 @@ fun FieldDetailScreen(
                     }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FieldDetailActionCard(
+    title: String,
+    subtitle: String,
+    icon: DrawableResource,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(28.dp),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                painter = painterResource(Res.drawable.ic_chevron_right),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -92,6 +92,8 @@ import org.jetbrains.compose.resources.stringResource
 fun FieldEditorScreen(
     onBack: (() -> Unit)? = null,
     onNavigateToBrapi: (() -> Unit)? = null,
+    onNavigateToCollect: (() -> Unit)? = null,
+    onNavigateToExport: ((Int) -> Unit)? = null,
     onSnackbarMessage: (String) -> Unit,
     viewModel: FieldEditorScreenViewModel = viewModel(
         factory = fieldEditorViewModelFactory()
@@ -137,6 +139,8 @@ fun FieldEditorScreen(
                 selectedFieldId.value = null
                 viewModel.clearFieldDetail()
             },
+            onNavigateToCollect = onNavigateToCollect,
+            onNavigateToExport = onNavigateToExport,
             onSnackbarMessage = onSnackbarMessage,
         )
         return
@@ -747,6 +751,10 @@ class FieldEditorScreenViewModel(
 
     fun getPossibleUniqueAttributes(fieldId: Int): List<String> {
         return studyRepository.getPossibleUniqueAttributes(fieldId)
+    }
+
+    fun hasVisibleTraits(): Boolean {
+        return traitRepository.getVisibleTraitsWithAttributes().isNotEmpty()
     }
 
     fun updateSearchAttribute(fieldId: Int, attribute: String, applyToAll: Boolean) {

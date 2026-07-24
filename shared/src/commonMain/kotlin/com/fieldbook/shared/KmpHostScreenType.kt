@@ -20,6 +20,9 @@ enum class KmpHostScreenType(val value: String) {
     STORAGE_PREFERENCES("storage_preferences"),
     STORAGE_DEFINER("storage_definer");
 
+    val route: String
+        get() = value
+
     companion object {
         fun fromValue(value: String): KmpHostScreenType {
             return KmpHostScreenType.entries.find { it.value.equals(value, ignoreCase = true) }
