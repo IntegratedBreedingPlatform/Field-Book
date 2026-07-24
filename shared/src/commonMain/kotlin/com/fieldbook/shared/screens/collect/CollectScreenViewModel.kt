@@ -87,19 +87,12 @@ class CollectScreenViewModel(
 
     val units: List<ObservationUnitModel> get() = _uiState.value.units
     val rangeID: Array<Int> get() = _uiState.value.rangeID
-    val unitLoading: Boolean get() = _uiState.value.unitLoading
-    val unitError: String? get() = _uiState.value.unitError
     val currentUnitIndex: Int get() = _uiState.value.currentUnitIndex
     val traits: List<TraitObject> get() = _uiState.value.traits
-    val traitLoading: Boolean get() = _uiState.value.traitLoading
-    val traitError: String? get() = _uiState.value.traitError
     val currentTraitIndex: Int get() = _uiState.value.currentTraitIndex
     val traitValues: Map<Long, List<String>> get() = _uiState.value.traitValues
-    val traitValuesLoading: Boolean get() = _uiState.value.traitValuesLoading
     val inputValidationMessage: String? get() = _uiState.value.inputValidationMessage
-    val collectInteractionLocked: Boolean get() = _uiState.value.collectInteractionLocked
     val dataLockState: CollectDataLockState get() = _uiState.value.dataLockState
-    val cRange: RangeObject get() = _uiState.value.cRange
 
     private var lastUnitId: String? = null
     private var restoredUnitSelection = false
@@ -267,7 +260,7 @@ class CollectScreenViewModel(
         val plotId = unit?.observation_unit_db_id
 
         if (plotId != null && trait?.id != null) {
-            currentEntryKey(plotId, trait.id!!)?.let { entryKey ->
+            currentEntryKey(plotId, trait.id!!).let { entryKey ->
                 if (value.isBlank()) {
                     suppressedDefaultEntries.add(entryKey)
                 } else {
@@ -294,34 +287,6 @@ class CollectScreenViewModel(
         updateCurrentTraitValue("NA")
     }
 
-    fun updateCurrentUnitGeoCoordinates(geoCoordinates: String) {
-        if (!canMutateCurrentObservation()) {
-            showCurrentDataLockMessage()
-            return
-        }
-        val unit = units.getOrNull(currentUnitIndex)
-        val unitDbId = unit?.observation_unit_db_id ?: return
-
-        observationUnitRepository.updateGeoCoordinates(
-            studyId = studyId.toLong(),
-            observationUnitDbId = unitDbId,
-            geoCoordinates = geoCoordinates,
-        )
-
-        updateState {
-            copy(
-                units = units.toMutableList().also { updated ->
-                    val current = updated.getOrNull(currentUnitIndex) ?: return@also
-                    updated[currentUnitIndex] = current.copy(
-                        map = current.map.toMutableMap().apply {
-                            put("geo_coordinates", geoCoordinates)
-                        }
-                    )
-                }
-            )
-        }
-    }
-
     fun shouldUseDefaultValue(traitId: Long?): Boolean {
         val unit = units.getOrNull(currentUnitIndex)
         val plotId = unit?.observation_unit_db_id
@@ -330,7 +295,7 @@ class CollectScreenViewModel(
         val currentValue = traitValues[traitId]?.firstOrNull().orEmpty()
         if (currentValue.isNotEmpty()) return false
 
-        return currentEntryKey(plotId, traitId)?.let { it !in suppressedDefaultEntries } == true
+        return currentEntryKey(plotId, traitId).let { it !in suppressedDefaultEntries }
     }
 
     fun ensureCurrentTraitDefaultValueApplied() {
@@ -504,7 +469,7 @@ class CollectScreenViewModel(
         val currentValue = traitId?.let { traitValues[it]?.firstOrNull() }.orEmpty()
 
         if (plotId != null && traitId != null) {
-            currentEntryKey(plotId, traitId)?.let { suppressedDefaultEntries.add(it) }
+            currentEntryKey(plotId, traitId).let { suppressedDefaultEntries.add(it) }
             observationRepository.deleteTraitByValue(
                 plotId = plotId,
                 traitDbId = traitId,
