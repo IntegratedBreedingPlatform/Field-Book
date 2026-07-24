@@ -76,9 +76,9 @@
 | Switch trait                     | :white_check_mark: | :white_check_mark: |
 | Go to trait                      | :white_check_mark: | :white_check_mark: |
 | Switch obs unit                  | :white_check_mark: | :white_check_mark: |
-| Quick goto obs unit              |                    |                    |
+| Quick goto obs unit              | :white_check_mark: | :white_check_mark: |
 | Trait types                      | See Trait formats  | See Trait formats  |
-| Customize Infobar                |                    |                    |
+| Customize Infobar                | :white_check_mark: | :white_check_mark: |
 |                                  |                    |                    |
 | **Collect actions**              |                    |                    |
 | Search                           | :white_check_mark: | :white_check_mark: |
