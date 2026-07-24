@@ -27,7 +27,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +44,8 @@ import com.fieldbook.shared.generated.resources.arrow_expand
 import com.fieldbook.shared.generated.resources.arrow_left
 import com.fieldbook.shared.generated.resources.camera_24px
 import com.fieldbook.shared.generated.resources.close
-import com.fieldbook.shared.screens.collect.CollectScreenController
+import com.fieldbook.shared.screens.collect.CollectScreenViewModel
+import com.fieldbook.shared.screens.collect.CollectUiState
 import com.fieldbook.shared.theme.MainFloatingActionButtonShape
 import com.fieldbook.shared.utilities.DocumentFile
 import com.fieldbook.shared.utilities.DocumentTreeUtil
@@ -78,17 +78,16 @@ enum class PhotoTraitDisplayMode {
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 fun PhotoTrait(
+    state: CollectUiState,
     values: List<String>,
     onPhotoCaptured: (String) -> Unit,
     onPhotoDeleted: (String) -> Unit,
     modifier: Modifier = Modifier,
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
     displayMode: PhotoTraitDisplayMode = PhotoTraitDisplayMode.INLINE,
     onExpandRequest: () -> Unit = {},
     onCollapseRequest: () -> Unit = {},
 ) {
-    val state by controller.uiState.collectAsState()
-
     fun currentTraitName(): String {
         return state.traits
             .getOrNull(state.currentTraitIndex)

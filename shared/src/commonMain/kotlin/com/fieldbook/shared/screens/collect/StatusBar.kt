@@ -14,8 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,11 +25,9 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun StatusBar(
-    viewModel: CollectScreenController,
+    state: CollectUiState,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.uiState.collectAsState()
-
     if (state.traitValuesLoading) {
         Box(
             modifier = modifier

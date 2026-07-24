@@ -19,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +36,8 @@ import com.fieldbook.shared.generated.resources.trait_audio_placeholder_filename
 import com.fieldbook.shared.generated.resources.trait_audio_play
 import com.fieldbook.shared.generated.resources.trait_audio_stop
 import com.fieldbook.shared.generated.resources.trait_audio_timestamp
-import com.fieldbook.shared.screens.collect.CollectScreenController
+import com.fieldbook.shared.screens.collect.CollectScreenViewModel
+import com.fieldbook.shared.screens.collect.CollectUiState
 import com.fieldbook.shared.utilities.DocumentTreeUtil
 import com.fieldbook.shared.utilities.currentLocalInternalTimestamp
 import com.fieldbook.shared.utilities.deleteFile
@@ -54,12 +54,12 @@ private enum class AudioButtonState {
 
 @Composable
 fun AudioTrait(
+    state: CollectUiState,
     value: String,
     onValueChange: (String) -> Unit,
-    controller: CollectScreenController,
+    viewModel: CollectScreenViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val state by controller.uiState.collectAsState()
     val audioController = remember { PlatformAudioController() }
     var buttonState by remember { mutableStateOf(AudioButtonState.WAITING_FOR_RECORDING) }
     var recordedUri by remember { mutableStateOf(value.takeUnless { it == "NA" }.orEmpty()) }
@@ -115,7 +115,7 @@ fun AudioTrait(
     }
 
     LaunchedEffect(buttonState) {
-        controller.updateCollectInteractionLocked(
+        viewModel.updateCollectInteractionLocked(
             buttonState == AudioButtonState.RECORDING || buttonState == AudioButtonState.PLAYING
         )
     }
@@ -123,7 +123,7 @@ fun AudioTrait(
     DisposableEffect(Unit) {
         onDispose {
             audioController.dispose()
-            controller.updateCollectInteractionLocked(false)
+            viewModel.updateCollectInteractionLocked(false)
         }
     }
 

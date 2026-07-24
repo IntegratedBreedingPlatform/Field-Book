@@ -21,7 +21,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,10 +43,10 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun TraitBox(
-    viewModel: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.uiState.collectAsState()
     val settings = remember { Settings() }
     val showTraitProgressBar = settings.getBoolean(PreferenceKeys.TRAITS_PROGRESS_BAR, true)
     var showTraitPickerDialog by remember { mutableStateOf(false) }
@@ -117,7 +116,7 @@ fun TraitBox(
             Spacer(Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 StatusBar(
-                    viewModel = viewModel,
+                    state = state,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -126,6 +125,7 @@ fun TraitBox(
 
     if (showTraitPickerDialog) {
         TraitPickerDialog(
+            state = state,
             viewModel = viewModel,
             onDismiss = { showTraitPickerDialog = false }
         )
@@ -134,10 +134,10 @@ fun TraitBox(
 
 @Composable
 private fun TraitPickerDialog(
-    viewModel: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     onDismiss: () -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsState()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.select_trait)) },

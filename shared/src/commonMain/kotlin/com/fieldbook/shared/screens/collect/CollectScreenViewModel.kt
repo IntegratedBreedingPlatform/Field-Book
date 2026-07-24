@@ -649,8 +649,6 @@ class CollectScreenViewModel(
     }
 }
 
-typealias CollectScreenController = CollectScreenViewModel
-
 fun collectScreenViewModelFactory() = viewModelFactory {
     initializer {
         CollectScreenViewModel(

@@ -13,8 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,17 +47,17 @@ fun PlotsProgressBar(
 
 @Composable
 fun RangeBox(
-    controller: CollectScreenController,
+    state: CollectUiState,
+    viewModel: CollectScreenViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val state by controller.uiState.collectAsState()
     val settings = remember { Settings() }
     val showRangeProgressBar = settings.getBoolean(PreferenceKeys.RANGE_PROGRESS_BAR, true)
 
     LaunchedEffect(state.currentUnitIndex, state.rangeID) {
         val id = state.rangeID.getOrNull(state.currentUnitIndex)
         if (id != null) {
-            controller.updateCurrentRange(id)
+            viewModel.updateCurrentRange(id)
         }
     }
 
@@ -80,7 +78,7 @@ fun RangeBox(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(
-                onClick = { controller.goToPreviousUnit() },
+                onClick = { viewModel.goToPreviousUnit() },
                 enabled = !state.collectInteractionLocked && state.units.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
@@ -95,14 +93,14 @@ fun RangeBox(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    "${controller.primaryId}: ${state.cRange.primaryId}",
+                    "${viewModel.primaryId}: ${state.cRange.primaryId}",
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    "${controller.secondaryId}: ${state.cRange.secondaryId}",
+                    "${viewModel.secondaryId}: ${state.cRange.secondaryId}",
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -110,7 +108,7 @@ fun RangeBox(
                 )
             }
             IconButton(
-                onClick = { controller.goToNextUnit() },
+                onClick = { viewModel.goToNextUnit() },
                 enabled = !state.collectInteractionLocked && state.units.isNotEmpty(),
                 modifier = Modifier.size(56.dp)
             ) {
